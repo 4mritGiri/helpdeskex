@@ -444,44 +444,36 @@ defmodule Helpdeskex.Chat do
 
   @doc "Add a reaction to a message."
   def add_reaction(message_id, user_id, emoji) do
-    changeset =
+    # Instagram logic: One user can have only one reaction per message
+    Repo.delete_all(
+      from r in MessageReaction,
+        where: r.message_id == ^message_id and r.user_id == ^user_id
+    )
+
+    changeset = 
       %MessageReaction{}
       |> MessageReaction.changeset(%{emoji: emoji, message_id: message_id, user_id: user_id})
 
-    case Repo.insert(changeset,
-           on_conflict: :nothing,
-           conflict_target: [:message_id, :user_id, :emoji]
-         ) do
-      {:ok, reaction} ->
-        msg = Repo.get!(Message, message_id)
-
-        broadcast_conversation(
-          msg.conversation_id,
-          {:message_reaction_added, %{message_id: message_id, user_id: user_id, emoji: emoji}}
-        )
-
-        {:ok, reaction}
-
-      {:error, changeset} ->
-        {:error, changeset}
+    case Repo.insert(changeset) do
+      {:ok, _reaction} ->
+        message = get_message!(message_id)
+        broadcast_conversation(message.conversation_id, {:message_updated, message})
+        {:ok, message}
+      {:error, changeset} -> {:error, changeset}
     end
   end
 
   @doc "Remove a reaction from a message."
   def remove_reaction(message_id, user_id, emoji) do
-    msg = Repo.get!(Message, message_id)
-
     Repo.delete_all(
       from r in MessageReaction,
         where: r.message_id == ^message_id and r.user_id == ^user_id and r.emoji == ^emoji
     )
 
-    broadcast_conversation(
-      msg.conversation_id,
-      {:message_reaction_removed, %{message_id: message_id, user_id: user_id, emoji: emoji}}
-    )
+    message = get_message!(message_id)
+    broadcast_conversation(message.conversation_id, {:message_updated, message})
 
-    :ok
+    {:ok, message}
   end
 
   @doc "Changeset for a new message (used in forms)."
