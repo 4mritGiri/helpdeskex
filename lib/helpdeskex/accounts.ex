@@ -51,8 +51,8 @@ defmodule Helpdeskex.Accounts do
 
   def get_user!(id), do: Repo.get!(User, id)
 
-  def get_user_by_email(tenant_id, email) do
-    Repo.get_by(User, tenant_id: tenant_id, email: email)
+  def get_user_by_email(email) do
+    Repo.get_by(User, email: email)
   end
 
   def authenticate_user(email, password) do
@@ -68,6 +68,30 @@ defmodule Helpdeskex.Accounts do
     %User{}
     |> User.changeset(attrs)
     |> Repo.insert()
+  end
+
+  def deliver_user_reset_password_instructions(%User{} = user, reset_password_url_fun) do
+    if user.is_active do
+      token =
+        Phoenix.Token.sign(
+          HelpdeskexWeb.Endpoint,
+          "user_pwd_reset",
+          {user.id, user.password_hash}
+        )
+
+      Helpdeskex.Accounts.UserNotifier.deliver_reset_password_instructions(
+        user,
+        reset_password_url_fun.(token)
+      )
+    end
+
+    {:ok, :instructions_sent}
+  end
+
+  def update_user_password(%User{} = user, password) do
+    user
+    |> User.changeset(%{password: password})
+    |> Repo.update()
   end
 
   # --- Roles ---

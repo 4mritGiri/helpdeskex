@@ -1,12 +1,15 @@
 defmodule HelpdeskexWeb.LoginLive do
   use HelpdeskexWeb, :live_view
 
+  @dev_routes Application.compile_env(:helpdeskex, :dev_routes, false)
+
   @impl true
   def mount(_params, _session, socket) do
     {:ok,
      socket
      |> assign(:page_title, "Login · HelpdeskEx")
      |> assign(:form, to_form(%{"email" => "", "password" => ""}))
+     |> assign(:dev_routes, @dev_routes)
      |> assign(:passkey_id, nil)}
   end
 
@@ -88,12 +91,12 @@ defmodule HelpdeskexWeb.LoginLive do
                   <label class="block text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
                     Password
                   </label>
-                  <a
-                    href="#"
+                  <.link
+                    navigate="/users/reset_password"
                     class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
                   >
                     Forgot?
-                  </a>
+                  </.link>
                 </div>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 dark:text-zinc-500">
@@ -146,16 +149,18 @@ defmodule HelpdeskexWeb.LoginLive do
             </div>
           </div>
 
-          <%!-- Demo Credentials Strip --%>
-          <div class="px-8 py-3.5 bg-slate-50/80 dark:bg-zinc-800/30 border-t border-slate-100 dark:border-white/[0.04] flex items-center gap-3">
-            <div class="size-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0"></div>
-            <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px]">
-              <span class="text-slate-400 dark:text-zinc-500 font-medium">Demo:</span>
-              <span class="font-semibold text-slate-700 dark:text-zinc-300">admin@acme.com</span>
-              <span class="text-slate-300 dark:text-zinc-600">/</span>
-              <span class="font-semibold text-slate-700 dark:text-zinc-300">password123</span>
+          <%= if @dev_routes do %>
+            <%!-- Demo Credentials Strip --%>
+            <div class="px-8 py-3.5 bg-slate-50/80 dark:bg-zinc-800/30 border-t border-slate-100 dark:border-white/[0.04] flex items-center gap-3">
+              <div class="size-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0"></div>
+              <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px]">
+                <span class="text-slate-400 dark:text-zinc-500 font-medium">Demo:</span>
+                <span class="font-semibold text-slate-700 dark:text-zinc-300">admin@acme.com</span>
+                <span class="text-slate-300 dark:text-zinc-600">/</span>
+                <span class="font-semibold text-slate-700 dark:text-zinc-300">password123</span>
+              </div>
             </div>
-          </div>
+          <% end %>
         </div>
 
         <p class="text-center text-[10px] text-slate-400 dark:text-zinc-600 font-medium mt-4 tracking-wide">
