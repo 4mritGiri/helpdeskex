@@ -227,10 +227,17 @@ defmodule Helpdeskex.Chat do
       {:ok, message} ->
         message = Repo.preload(message, [:sender, :attachments, reply_to: [:sender]])
         broadcast_conversation(conversation_id, {:new_message, message})
+
+        participants = Repo.all(from p in Participant, where: p.conversation_id == ^conversation_id)
+        for p <- participants, p.user_id != sender_id do
+           broadcast_user(p.user_id, {:new_message_notification, message})
+        end
+
         {:ok, message}
 
-      error ->
-        error
+      {:error, changeset} ->
+        IO.inspect(changeset.errors, label: "Message Sending Failed!")
+        {:error, changeset}
     end
   end
 

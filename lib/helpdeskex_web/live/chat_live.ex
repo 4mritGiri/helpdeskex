@@ -157,9 +157,9 @@ defmodule HelpdeskexWeb.ChatLive do
       # Determine message type and metadata
       {type, metadata} = 
         if not Enum.empty?(uploaded_files) do
-          {"file", %{"attachments" => uploaded_files}}
+          {"file", Jason.encode!(%{"attachments" => uploaded_files})}
         else
-          {"text", %{}}
+          {"text", nil}
         end
 
       attrs = %{"body" => body, "type" => type, "metadata" => metadata, "reply_to_id" => reply_to_id}
@@ -170,6 +170,10 @@ defmodule HelpdeskexWeb.ChatLive do
   end
 
   @impl true
+  def handle_event("validate_upload", %{"body" => body}, socket) do
+    {:noreply, assign(socket, :message_input, body)}
+  end
+
   def handle_event("validate_upload", _params, socket) do
     {:noreply, socket}
   end
@@ -179,10 +183,8 @@ defmodule HelpdeskexWeb.ChatLive do
     {:noreply, cancel_upload(socket, :attachments, ref)}
   end
 
-  @impl true
-  def handle_event("message_input_change", %{"body" => body}, socket) do
-    {:noreply, assign(socket, :message_input, body)}
-  end
+  # Removed duplicate message_input_change directly inside the form
+
 
   @impl true
   def handle_event("set_reply_to", %{"message_id" => msg_id}, socket) do

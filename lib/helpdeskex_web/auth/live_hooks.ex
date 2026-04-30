@@ -12,6 +12,24 @@ defmodule HelpdeskexWeb.Auth.LiveHooks do
     socket = mount_current_user(socket, session)
 
     if socket.assigns.current_user do
+      if connected?(socket) do
+        Helpdeskex.Chat.subscribe_user(socket.assigns.current_user.id)
+      end
+
+      socket =
+        attach_hook(socket, :chat_notifications, :handle_info, fn
+          {:new_message_notification, msg}, socket ->
+            active_id = Map.get(socket.assigns, :active_conversation) && socket.assigns.active_conversation.id
+            if active_id != msg.conversation_id do
+              {:cont, put_flash(socket, :info, "Chat: #{msg.sender.full_name}: #{String.slice(msg.body || "Sent an attachment", 0, 30)}")}
+            else
+              {:cont, socket}
+            end
+
+          _, socket ->
+            {:cont, socket}
+        end)
+
       {:cont, socket}
     else
       socket =
