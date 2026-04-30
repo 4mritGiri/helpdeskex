@@ -13,97 +13,99 @@ defmodule HelpdeskexWeb.LoginLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#050505] font-sans selection:bg-indigo-500/30">
-      <%!-- Immersive Background --%>
-      <div class="absolute inset-0 z-0">
+    <div class="min-h-screen flex items-center justify-center relative bg-slate-100 dark:bg-zinc-950 font-sans overflow-hidden">
+      <%!-- Subtle background texture — never distracting --%>
+      <div class="absolute inset-0 pointer-events-none">
+        <img
+          src="/images/login_bg_light.png"
+          class="w-full h-full object-cover opacity-30 dark:hidden scale-110"
+          style="filter: blur(30px);"
+        />
         <img
           src="/images/login_bg.png"
-          class="w-full h-full object-cover opacity-40 scale-110"
-          style="filter: blur(60px); mix-blend-mode: screen;"
+          class="w-full h-full object-cover opacity-25 hidden dark:block scale-110"
+          style="filter: blur(60px) saturate(1.3);"
         />
-        <div class="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black/80"></div>
+        <div class="absolute inset-0 bg-gradient-to-br from-white/60 via-transparent to-indigo-50/30 dark:from-black/80 dark:via-transparent dark:to-indigo-950/30">
+        </div>
       </div>
 
-      <div class="relative z-10 w-full max-w-[460px] px-6 py-12">
-        <%!-- Header Section --%>
-        <div class="flex flex-col items-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
-          <div class="group relative mb-8">
-            <div class="absolute -inset-4 bg-indigo-500/20 rounded-full blur-2xl group-hover:bg-indigo-500/30 transition-all duration-700">
-            </div>
+      <%!-- Compact card that fits any standard viewport --%>
+      <div class="relative z-10 w-full max-w-md mx-auto px-4">
+        <div class="bg-white/90 dark:bg-zinc-900/80 backdrop-blur-xl rounded-3xl shadow-xl shadow-slate-200/60 dark:shadow-black/60 border border-slate-200/80 dark:border-white/[0.07] overflow-hidden">
+          <%!-- Card Header --%>
+          <div class="px-8 pt-7 pb-5 border-b border-slate-100 dark:border-white/[0.05] flex items-center gap-4">
             <div class="relative size-14 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center shadow-inner overflow-hidden">
               <div class="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent"></div>
               <span class="text-xl font-black text-white tracking-tighter leading-none">
                 H<span class="text-indigo-500">X</span>
               </span>
             </div>
+            <div>
+              <h1 class="text-lg font-bold text-slate-900 dark:text-white leading-tight">
+                Welcome back
+              </h1>
+              <p class="text-xs text-slate-400 dark:text-zinc-500 font-medium mt-0.5">
+                Sign in to HelpdeskEx
+              </p>
+            </div>
           </div>
-          <h1 class="text-4xl font-bold text-white tracking-tight leading-tight mb-3">
-            Welcome back
-          </h1>
-          <p class="text-zinc-500 text-sm font-medium tracking-wide">
-            Enter your credentials to access your workspace
-          </p>
-        </div>
 
-        <%!-- Main Form Card --%>
-        <div class="backdrop-blur-[32px] bg-white/[0.02] border border-white/10 rounded-[40px] p-1 pt-1 shadow-2xl animate-in zoom-in-95 duration-700">
-          <div class="bg-zinc-950/40 rounded-[39px] p-8 md:p-10">
+          <%!-- Form Body --%>
+          <div class="px-8 py-6">
             <%= if flash = @flash["error"] do %>
-              <div class="mb-8 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center gap-3 animate-in fade-in zoom-in-95">
-                <div class="size-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]">
-                </div>
-                <p class="text-sm font-semibold text-red-400/90">{flash}</p>
+              <div class="mb-4 px-4 py-2.5 rounded-xl bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-500/20 flex items-center gap-2.5">
+                <div class="size-1.5 rounded-full bg-red-500 flex-shrink-0"></div>
+                <span class="text-xs font-semibold text-red-600 dark:text-red-400">{flash}</span>
               </div>
             <% end %>
 
-            <form method="post" action="/session" class="space-y-8">
+            <form method="post" action="/session" class="space-y-4">
               <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
 
-              <div class="space-y-3">
-                <div class="flex justify-between items-end px-1">
-                  <label class="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
-                    User Identity
-                  </label>
-                </div>
+              <div>
+                <label class="block text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider mb-1.5">
+                  Email
+                </label>
                 <div class="relative">
-                  <div class="absolute inset-y-0 left-5 flex items-center pointer-events-none text-zinc-600 transition-colors duration-300">
-                    <.icon name="hero-envelope" class="size-5" />
+                  <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 dark:text-zinc-500">
+                    <.icon name="hero-envelope" class="size-4" />
                   </div>
                   <input
                     id="email"
                     type="email"
                     name="email"
-                    placeholder="name@company.com"
+                    placeholder="you@company.com"
                     autocomplete="email"
-                    class="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-4 pl-14 pr-5 text-[15px] text-white placeholder:text-zinc-700 focus:outline-none focus:bg-white/[0.06] focus:border-indigo-500/30 transition-all duration-300 shadow-inner"
+                    class="w-full bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700/60 rounded-xl py-2.5 pl-9 pr-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 dark:focus:border-indigo-500/50 transition-all"
                     required
                   />
                 </div>
               </div>
 
-              <div class="space-y-3">
-                <div class="flex justify-between items-end px-1">
-                  <label class="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
-                    Security Key
+              <div>
+                <div class="flex items-center justify-between mb-1.5">
+                  <label class="block text-[11px] font-bold text-slate-500 dark:text-zinc-400 uppercase tracking-wider">
+                    Password
                   </label>
                   <a
                     href="#"
-                    class="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-widest transition-colors"
+                    class="text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 transition-colors"
                   >
-                    Recover?
+                    Forgot?
                   </a>
                 </div>
                 <div class="relative">
-                  <div class="absolute inset-y-0 left-5 flex items-center pointer-events-none text-zinc-600 transition-colors duration-300">
-                    <.icon name="hero-lock-closed" class="size-5" />
+                  <div class="absolute inset-y-0 left-3 flex items-center pointer-events-none text-slate-400 dark:text-zinc-500">
+                    <.icon name="hero-lock-closed" class="size-4" />
                   </div>
                   <input
                     id="password"
                     type="password"
                     name="password"
-                    placeholder="••••••••••••"
+                    placeholder="••••••••"
                     autocomplete="current-password"
-                    class="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-4 pl-14 pr-5 text-[15px] text-white placeholder:text-zinc-700 focus:outline-none focus:bg-white/[0.06] focus:border-indigo-500/30 transition-all duration-300 shadow-inner"
+                    class="w-full bg-slate-50 dark:bg-zinc-800/60 border border-slate-200 dark:border-zinc-700/60 rounded-xl py-2.5 pl-9 pr-3 text-sm text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-400 dark:focus:border-indigo-500/50 transition-all"
                     required
                   />
                 </div>
@@ -111,66 +113,54 @@ defmodule HelpdeskexWeb.LoginLive do
 
               <button
                 type="submit"
-                class="group relative w-full overflow-hidden rounded-2xl bg-indigo-600 p-4 transition-all duration-500 hover:bg-indigo-500 active:scale-[0.98] shadow-[0_20px_50px_rgba(79,70,229,0.2)]"
+                class="w-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold py-2.5 rounded-xl shadow-md shadow-indigo-500/20 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
               >
-                <div class="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000">
-                </div>
-                <span class="relative flex items-center justify-center gap-3 text-sm font-extrabold text-white uppercase tracking-[0.15em]">
-                  Authenticate
-                  <.icon
-                    name="hero-arrow-right"
-                    class="size-4 transition-transform group-hover:translate-x-1"
-                  />
-                </span>
+                Sign In <.icon name="hero-arrow-right" class="size-4" />
               </button>
             </form>
 
-            <div class="mt-10">
-              <div class="relative flex items-center justify-center">
-                <div class="absolute w-full border-t border-white/[0.03]"></div>
-                <span class="relative px-6 bg-[#0c0c0e] text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em]">
-                  Alternate Login
-                </span>
-              </div>
-
-              <div id="passkey-container" phx-hook="Passkey" class="mt-8">
-                <button
-                  type="button"
-                  phx-click="start-passkey-login"
-                  class="w-full bg-white/[0.02] hover:bg-white/[0.05] text-zinc-400 border border-white/5 py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-3 transition-all duration-300"
-                >
-                  <.icon name="hero-finger-print" class="size-5 text-indigo-500/70" />
-                  Continue with Biometrics
-                </button>
-
-                <form id="passkey-form" method="post" action="/session" style="display:none;">
-                  <input
-                    type="hidden"
-                    name="_csrf_token"
-                    value={Plug.CSRFProtection.get_csrf_token()}
-                  />
-                  <input type="hidden" name="passkey_id" value={@passkey_id} />
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <%!-- Footer Section --%>
-        <div class="mt-8 flex flex-col items-center gap-8 animate-in fade-in duration-1000">
-          <div class="flex items-center gap-6 px-1">
-            <div class="flex flex-col items-center gap-1">
-              <span class="text-[9px] font-black text-zinc-600 uppercase tracking-widest">
-                Admin Demo
+            <%!-- Or divider --%>
+            <div class="flex items-center gap-3 my-4">
+              <div class="flex-1 h-px bg-slate-200 dark:bg-zinc-700/50"></div>
+              <span class="text-[10px] font-bold text-slate-400 dark:text-zinc-600 uppercase tracking-wider">
+                or
               </span>
-              <span class="text-[11px] font-medium text-zinc-400">admin@acme.com / password123</span>
+              <div class="flex-1 h-px bg-slate-200 dark:bg-zinc-700/50"></div>
+            </div>
+
+            <%!-- Passkey --%>
+            <div id="passkey-container" phx-hook="Passkey">
+              <button
+                type="button"
+                phx-click="start-passkey-login"
+                class="w-full bg-slate-50 dark:bg-zinc-800/40 hover:bg-slate-100 dark:hover:bg-zinc-800 text-slate-600 dark:text-zinc-400 border border-slate-200 dark:border-zinc-700/50 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all"
+              >
+                <.icon name="hero-finger-print" class="size-4 text-indigo-500" />
+                Continue with Biometrics
+              </button>
+
+              <form id="passkey-form" method="post" action="/session" style="display:none;">
+                <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+                <input type="hidden" name="passkey_id" value={@passkey_id} />
+              </form>
             </div>
           </div>
 
-          <p class="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.2em] opacity-50">
-            &copy; 2026 Secured BY HelpdeskEx Core
-          </p>
+          <%!-- Demo Credentials Strip --%>
+          <div class="px-8 py-3.5 bg-slate-50/80 dark:bg-zinc-800/30 border-t border-slate-100 dark:border-white/[0.04] flex items-center gap-3">
+            <div class="size-1.5 rounded-full bg-green-400 animate-pulse flex-shrink-0"></div>
+            <div class="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px]">
+              <span class="text-slate-400 dark:text-zinc-500 font-medium">Demo:</span>
+              <span class="font-semibold text-slate-700 dark:text-zinc-300">admin@acme.com</span>
+              <span class="text-slate-300 dark:text-zinc-600">/</span>
+              <span class="font-semibold text-slate-700 dark:text-zinc-300">password123</span>
+            </div>
+          </div>
         </div>
+
+        <p class="text-center text-[10px] text-slate-400 dark:text-zinc-600 font-medium mt-4 tracking-wide">
+          &copy; 2026 HelpdeskEx &mdash; All rights reserved
+        </p>
       </div>
     </div>
     """
