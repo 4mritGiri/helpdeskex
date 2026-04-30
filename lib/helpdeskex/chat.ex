@@ -450,7 +450,7 @@ defmodule Helpdeskex.Chat do
         where: r.message_id == ^message_id and r.user_id == ^user_id
     )
 
-    changeset = 
+    changeset =
       %MessageReaction{}
       |> MessageReaction.changeset(%{emoji: emoji, message_id: message_id, user_id: user_id})
 
@@ -459,7 +459,9 @@ defmodule Helpdeskex.Chat do
         message = get_message!(message_id)
         broadcast_conversation(message.conversation_id, {:message_updated, message})
         {:ok, message}
-      {:error, changeset} -> {:error, changeset}
+
+      {:error, changeset} ->
+        {:error, changeset}
     end
   end
 
