@@ -13,150 +13,164 @@ defmodule HelpdeskexWeb.LoginLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-zinc-950 font-sans">
-      <%!-- Dynamic Background Image --%>
+    <div class="min-h-screen flex items-center justify-center relative overflow-hidden bg-[#050505] font-sans selection:bg-indigo-500/30">
+      <%!-- Immersive Background --%>
       <div class="absolute inset-0 z-0">
         <img
           src="/images/login_bg.png"
-          class="w-full h-full object-cover opacity-60 scale-105 animate-pulse"
-          style="filter: blur(40px); animation-duration: 8s;"
+          class="w-full h-full object-cover opacity-40 scale-110"
+          style="filter: blur(60px); mix-blend-mode: screen;"
         />
-        <div class="absolute inset-0 bg-gradient-to-tr from-zinc-950 via-transparent to-zinc-950">
-        </div>
+        <div class="absolute inset-0 bg-gradient-to-b from-black via-transparent to-black/80"></div>
       </div>
 
-      <%!-- Floating Decorative Elements --%>
-      <div class="absolute top-1/4 -left-20 w-96 h-96 bg-purple-600/20 rounded-full blur-[100px] animate-blob">
-      </div>
-      <div class="absolute bottom-1/4 -right-20 w-96 h-96 bg-blue-600/20 rounded-full blur-[100px] animate-blob animation-delay-2000">
-      </div>
-
-      <div class="relative z-10 w-full max-w-[440px] px-6">
-        <%!-- Login Card --%>
-        <div class="backdrop-blur-2xl bg-zinc-900/65 border border-white/10 rounded-3xl p-8 md:p-12 shadow-2xl shadow-black/50">
-          <div class="flex flex-col items-center mb-10">
-            <div class="size-16 mb-6 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center p-0.5 shadow-lg shadow-indigo-500/20 ring-1 ring-white/20">
-              <div class="size-full bg-zinc-900 rounded-[14px] flex items-center justify-center text-2xl font-bold text-white tracking-tighter">
+      <div class="relative z-10 w-full max-w-[460px] px-6 py-12">
+        <%!-- Header Section --%>
+        <div class="flex flex-col items-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+          <div class="group relative mb-8">
+            <div class="absolute -inset-4 bg-indigo-500/20 rounded-full blur-2xl group-hover:bg-indigo-500/30 transition-all duration-700">
+            </div>
+            <div class="relative size-14 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center justify-center shadow-inner overflow-hidden">
+              <div class="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 to-transparent"></div>
+              <span class="text-xl font-black text-white tracking-tighter leading-none">
                 H<span class="text-indigo-500">X</span>
-              </div>
-            </div>
-            <h1 class="text-3xl font-bold text-white tracking-tight mb-2">Welcome back</h1>
-            <p class="text-zinc-400 text-center text-sm font-medium">
-              Sign in to your helpdesk workspace
-            </p>
-          </div>
-
-          <%= if flash = @flash["error"] do %>
-            <div class="mb-6 p-4 rounded-xl bg-red-500/10 border border-red-500/20 flex items-center gap-3 animate-shake">
-              <.icon name="hero-exclamation-circle" class="size-5 text-red-500" />
-              <p class="text-sm font-medium text-red-400">{flash}</p>
-            </div>
-          <% end %>
-
-          <form method="post" action="/session" class="space-y-6">
-            <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-
-            <div class="space-y-2">
-              <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest ml-1">
-                Email Address
-              </label>
-              <div class="relative group">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-indigo-500 text-zinc-500">
-                  <.icon name="hero-envelope" class="size-5" />
-                </div>
-                <input
-                  id="email"
-                  type="email"
-                  name="email"
-                  placeholder="you@company.com"
-                  autocomplete="email"
-                  class="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl py-3 pl-11 pr-4 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            <div class="space-y-2">
-              <div class="flex items-center justify-between ml-1">
-                <label class="block text-xs font-bold text-zinc-500 uppercase tracking-widest">
-                  Password
-                </label>
-                <a
-                  href="#"
-                  class="text-xs font-semibold text-indigo-400 hover:text-indigo-300 transition-colors"
-                >
-                  Forgot?
-                </a>
-              </div>
-              <div class="relative group">
-                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none transition-colors group-focus-within:text-indigo-500 text-zinc-500">
-                  <.icon name="hero-lock-closed" class="size-5" />
-                </div>
-                <input
-                  id="password"
-                  type="password"
-                  name="password"
-                  placeholder="••••••••"
-                  autocomplete="current-password"
-                  class="w-full bg-zinc-800/50 border border-zinc-700/50 rounded-xl py-3 pl-11 pr-4 text-white placeholder:text-zinc-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-all"
-                  required
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-4 rounded-xl shadow-lg shadow-indigo-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
-            >
-              <span>Sign In</span>
-              <.icon name="hero-arrow-right" class="size-5" />
-            </button>
-          </form>
-
-          <div class="mt-8">
-            <div class="relative py-4">
-              <div class="absolute inset-0 flex items-center">
-                <div class="w-full border-t border-zinc-800"></div>
-              </div>
-              <div class="relative flex justify-center text-xs uppercase tracking-widest font-bold">
-                <span class="bg-zinc-900 px-4 text-zinc-500">Or continue with</span>
-              </div>
-            </div>
-
-            <div id="passkey-container" phx-hook="Passkey" class="mt-4">
-              <button
-                type="button"
-                phx-click="start-passkey-login"
-                class="w-full bg-zinc-800/50 hover:bg-zinc-800 text-zinc-300 border border-zinc-700/50 py-3 rounded-xl font-semibold flex items-center justify-center gap-3 transition-colors"
-              >
-                <.icon name="hero-finger-print" class="size-5 text-indigo-400" /> Sign in with Passkey
-              </button>
-
-              <form id="passkey-form" method="post" action="/session" style="display:none;">
-                <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
-                <input type="hidden" name="passkey_id" value={@passkey_id} />
-              </form>
-            </div>
-          </div>
-
-          <%!-- Demo Credentials --%>
-          <div class="mt-10 p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
-            <div class="flex items-center gap-2 mb-3">
-              <.icon name="hero-information-circle" class="size-4 text-indigo-400" />
-              <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">
-                Demo access
               </span>
             </div>
-            <div class="grid grid-cols-1 gap-1 text-[13px] text-zinc-500">
-              <p>Email: <span class="text-zinc-300 font-mono">admin@acme.com</span></p>
-              <p>Password: <span class="text-zinc-300 font-mono">password123</span></p>
+          </div>
+          <h1 class="text-4xl font-bold text-white tracking-tight leading-tight mb-3">
+            Welcome back
+          </h1>
+          <p class="text-zinc-500 text-sm font-medium tracking-wide">
+            Enter your credentials to access your workspace
+          </p>
+        </div>
+
+        <%!-- Main Form Card --%>
+        <div class="backdrop-blur-[32px] bg-white/[0.02] border border-white/10 rounded-[40px] p-1 pt-1 shadow-2xl animate-in zoom-in-95 duration-700">
+          <div class="bg-zinc-950/40 rounded-[39px] p-8 md:p-10">
+            <%= if flash = @flash["error"] do %>
+              <div class="mb-8 p-4 rounded-2xl bg-red-500/5 border border-red-500/10 flex items-center gap-3 animate-in fade-in zoom-in-95">
+                <div class="size-2 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]">
+                </div>
+                <p class="text-sm font-semibold text-red-400/90">{flash}</p>
+              </div>
+            <% end %>
+
+            <form method="post" action="/session" class="space-y-8">
+              <input type="hidden" name="_csrf_token" value={Plug.CSRFProtection.get_csrf_token()} />
+
+              <div class="space-y-3">
+                <div class="flex justify-between items-end px-1">
+                  <label class="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
+                    User Identity
+                  </label>
+                </div>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-5 flex items-center pointer-events-none text-zinc-600 transition-colors duration-300">
+                    <.icon name="hero-envelope" class="size-5" />
+                  </div>
+                  <input
+                    id="email"
+                    type="email"
+                    name="email"
+                    placeholder="name@company.com"
+                    autocomplete="email"
+                    class="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-4 pl-14 pr-5 text-[15px] text-white placeholder:text-zinc-700 focus:outline-none focus:bg-white/[0.06] focus:border-indigo-500/30 transition-all duration-300 shadow-inner"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div class="space-y-3">
+                <div class="flex justify-between items-end px-1">
+                  <label class="text-[10px] font-black text-zinc-500 uppercase tracking-[0.2em]">
+                    Security Key
+                  </label>
+                  <a
+                    href="#"
+                    class="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 uppercase tracking-widest transition-colors"
+                  >
+                    Recover?
+                  </a>
+                </div>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-5 flex items-center pointer-events-none text-zinc-600 transition-colors duration-300">
+                    <.icon name="hero-lock-closed" class="size-5" />
+                  </div>
+                  <input
+                    id="password"
+                    type="password"
+                    name="password"
+                    placeholder="••••••••••••"
+                    autocomplete="current-password"
+                    class="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-4 pl-14 pr-5 text-[15px] text-white placeholder:text-zinc-700 focus:outline-none focus:bg-white/[0.06] focus:border-indigo-500/30 transition-all duration-300 shadow-inner"
+                    required
+                  />
+                </div>
+              </div>
+
+              <button
+                type="submit"
+                class="group relative w-full overflow-hidden rounded-2xl bg-indigo-600 p-4 transition-all duration-500 hover:bg-indigo-500 active:scale-[0.98] shadow-[0_20px_50px_rgba(79,70,229,0.2)]"
+              >
+                <div class="absolute inset-0 bg-gradient-to-r from-indigo-400/20 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000">
+                </div>
+                <span class="relative flex items-center justify-center gap-3 text-sm font-extrabold text-white uppercase tracking-[0.15em]">
+                  Authenticate
+                  <.icon
+                    name="hero-arrow-right"
+                    class="size-4 transition-transform group-hover:translate-x-1"
+                  />
+                </span>
+              </button>
+            </form>
+
+            <div class="mt-10">
+              <div class="relative flex items-center justify-center">
+                <div class="absolute w-full border-t border-white/[0.03]"></div>
+                <span class="relative px-6 bg-[#0c0c0e] text-[9px] font-black text-zinc-600 uppercase tracking-[0.3em]">
+                  Alternate Login
+                </span>
+              </div>
+
+              <div id="passkey-container" phx-hook="Passkey" class="mt-8">
+                <button
+                  type="button"
+                  phx-click="start-passkey-login"
+                  class="w-full bg-white/[0.02] hover:bg-white/[0.05] text-zinc-400 border border-white/5 py-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-3 transition-all duration-300"
+                >
+                  <.icon name="hero-finger-print" class="size-5 text-indigo-500/70" />
+                  Continue with Biometrics
+                </button>
+
+                <form id="passkey-form" method="post" action="/session" style="display:none;">
+                  <input
+                    type="hidden"
+                    name="_csrf_token"
+                    value={Plug.CSRFProtection.get_csrf_token()}
+                  />
+                  <input type="hidden" name="passkey_id" value={@passkey_id} />
+                </form>
+              </div>
             </div>
           </div>
         </div>
 
-        <p class="mt-8 text-center text-zinc-500 text-xs font-medium">
-          &copy; 2026 HelpdeskEx. Built for performance and security.
-        </p>
+        <%!-- Footer Section --%>
+        <div class="mt-8 flex flex-col items-center gap-8 animate-in fade-in duration-1000">
+          <div class="flex items-center gap-6 px-1">
+            <div class="flex flex-col items-center gap-1">
+              <span class="text-[9px] font-black text-zinc-600 uppercase tracking-widest">
+                Admin Demo
+              </span>
+              <span class="text-[11px] font-medium text-zinc-400">admin@acme.com / password123</span>
+            </div>
+          </div>
+
+          <p class="text-zinc-600 text-[10px] font-bold uppercase tracking-[0.2em] opacity-50">
+            &copy; 2026 Secured BY HelpdeskEx Core
+          </p>
+        </div>
       </div>
     </div>
     """
