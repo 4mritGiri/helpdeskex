@@ -1,0 +1,199 @@
+// If you want to use Phoenix channels, run `mix help phx.gen.channel`
+// to get started and then uncomment the line below.
+// import "./user_socket.js"
+
+// You can include dependencies in two ways.
+//
+// The simplest option is to put them in assets/vendor and
+// import them using relative paths:
+//
+//     import "../vendor/some-package.js"
+//
+// Alternatively, you can `npm install some-package --prefix assets` and import
+// them using a path starting with the package name:
+//
+//     import "some-package"
+//
+// If you have dependencies that try to import CSS, esbuild will generate a separate `app.css` file.
+// To load it, simply add a second `<link>` to your `root.html.heex` file.
+
+// Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
+import "phoenix_html"
+// Establish Phoenix Socket and LiveView configuration.
+import {Socket} from "phoenix"
+import {LiveSocket} from "phoenix_live_view"
+import {hooks as colocatedHooks} from "phoenix-colocated/helpdeskex"
+import topbar from "../vendor/topbar"
+
+let Hooks = {
+  Kanban: {
+    mounted() {
+      const Sortable = window.Sortable
+      if (!Sortable) {
+        console.error("SortableJS not loaded")
+        return
+      }
+      this.el.querySelectorAll(".column-body").forEach(column => {
+        new Sortable(column, {
+          group: "tickets",
+          animation: 150,
+          ghostClass: "bg-surface-light",
+          onEnd: (evt) => {
+            const ticketId = evt.item.dataset.id
+            const newStatus = evt.to.dataset.statusId
+            if (evt.from !== evt.to) {
+              this.pushEvent("update_ticket_status", { id: ticketId, status: newStatus })
+            }
+          }
+        })
+      })
+    }
+  },
+
+  Passkey: {
+    mounted() {
+      // Handle registration
+      this.handleEvent("register-passkey", ({ challenge, user_id, user_email }) => {
+        const challenge_bytes = Uint8Array.from(atob(challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+        const user_id_bytes = new TextEncoder().encode(user_id);
+
+        const options = {
+          publicKey: {
+            challenge: challenge_bytes,
+            rp: { name: "HelpdeskEx" },
+            user: {
+              id: user_id_bytes,
+              name: user_email,
+              displayName: user_email
+            },
+            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+            timeout: 60000,
+            attestation: "none",
+            authenticatorSelection: {
+              residentKey: "preferred",
+              userVerification: "preferred"
+            }
+          }
+        };
+
+        navigator.credentials.create(options)
+          .then((cred) => {
+            const rawId = btoa(String.fromCharCode.apply(null, new Uint8Array(cred.rawId))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            const pubKey = btoa(String.fromCharCode.apply(null, new Uint8Array(cred.response.getPublicKey()))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            this.pushEvent("passkey-registered", { id: rawId, publicKey: pubKey });
+          })
+          .catch(err => console.error("Registration failed", err));
+      });
+
+      // Handle login
+      this.handleEvent("login-passkey", ({ challenge }) => {
+        const challenge_bytes = Uint8Array.from(atob(challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+
+        const options = {
+          publicKey: {
+            challenge: challenge_bytes,
+            timeout: 60000,
+            userVerification: "preferred"
+          }
+        };
+
+        navigator.credentials.get(options)
+          .then((assertion) => {
+            const rawId = btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.rawId))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
+            this.pushEvent("passkey-login-ready", { id: rawId });
+          })
+          .catch(err => console.error("Login failed", err));
+      });
+    }
+  },
+
+  Persistence: {
+    mounted() {
+      // Restore from localStorage on mount
+      const theme = localStorage.getItem("phx:theme") || "light";
+      const sidebarCollapsed = localStorage.getItem("deskflow:sidebar_collapsed") === "true";
+      
+      // Push to server so assigns are in sync
+      this.pushEvent("restore_state", { theme, sidebar_collapsed: sidebarCollapsed });
+      
+      // Listen for storage events from server
+      this.handleEvent("store_state", ({ key, value }) => {
+        const storageKey = key === "theme" ? "phx:theme" : `deskflow:${key}`;
+        localStorage.setItem(storageKey, value);
+        if (key === "theme") {
+          document.documentElement.setAttribute("data-theme", value);
+        }
+      });
+    }
+  }
+}
+
+const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
+const liveSocket = new LiveSocket("/live", Socket, {
+  longPollFallbackMs: 2500,
+  params: {_csrf_token: csrfToken},
+  hooks: {...Hooks, ...colocatedHooks},
+})
+
+// Show progress bar on live navigation and form submits
+topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
+window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
+window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+
+// LiveView JS Exec helper
+window.addEventListener("phx:js-exec", ({detail}) => {
+  const el = document.querySelector(detail.selector);
+  if (el) {
+    if (detail.action === "submit") el.submit();
+    else el[detail.action]();
+  }
+});
+
+// connect if there are any LiveViews on the page
+liveSocket.connect()
+
+// expose liveSocket on window for web console debug logs and latency simulation:
+// >> liveSocket.enableDebug()
+// >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
+// >> liveSocket.disableLatencySim()
+window.liveSocket = liveSocket
+
+// The lines below enable quality of life phoenix_live_reload
+// development features:
+//
+//     1. stream server logs to the browser console
+//     2. click on elements to jump to their definitions in your code editor
+//
+if (process.env.NODE_ENV === "development") {
+  window.addEventListener("phx:live_reload:attached", ({detail: reloader}) => {
+    // Enable server log streaming to client.
+    // Disable with reloader.disableServerLogs()
+    reloader.enableServerLogs()
+
+    // Open configured PLUG_EDITOR at file:line of the clicked element's HEEx component
+    //
+    //   * click with "c" key pressed to open at caller location
+    //   * click with "d" key pressed to open at function component definition location
+    let keyDown
+    window.addEventListener("keydown", e => keyDown = e.key)
+    window.addEventListener("keyup", _e => keyDown = null)
+    window.addEventListener("click", e => {
+      if(keyDown === "c"){
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        reloader.openEditorAtCaller(e.target)
+      } else if(keyDown === "d"){
+        e.preventDefault()
+        e.stopImmediatePropagation()
+        reloader.openEditorAtDef(e.target)
+      }
+    }, true)
+
+    window.liveReloader = reloader
+  })
+}
+
+// --- Custom HelpdeskEx UI Logic ---
+// We now use LiveView Hooks (see Hooks.Kanban above)
+
+

@@ -1,0 +1,252 @@
+<div class="app-shell">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="logo">
+        <div class="logo-icon">H</div>
+        <span class="logo-text">HelpdeskEx</span>
+      </div>
+      <button id="sidebarToggle" class="p-2 hover:bg-white/10 rounded-md">
+        <svg
+          width="16"
+          height="16"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M15 18l-6-6 6-6" />
+        </svg>
+      </button>
+    </div>
+
+    <nav class="nav-section">
+      <div class="text-[0.7rem] font-bold text-muted uppercase tracking-wider mb-4 px-3">
+        Workspace
+      </div>
+      <a href="#" class="nav-item active">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect
+            x="14"
+            y="14"
+            width="7"
+            height="7"
+          /><rect x="3" y="14" width="7" height="7" />
+        </svg>
+        <span>Dashboard</span>
+        <span class="badge badge-blue ml-auto">12</span>
+      </a>
+      <a href="#" class="nav-item">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" /><line
+            x1="7"
+            y1="7"
+            x2="7.01"
+            y2="7"
+          />
+        </svg>
+        <span>All Tickets</span>
+      </a>
+      <a href="#" class="nav-item">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+        </svg>
+        <span>My Tickets</span>
+      </a>
+
+      <div class="text-[0.7rem] font-bold text-muted uppercase tracking-wider mt-8 mb-4 px-3">
+        Management
+      </div>
+      <a href="#" class="nav-item">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+        </svg>
+        <span>Teams</span>
+      </a>
+      <a href="#" class="nav-item">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="12" cy="12" r="10" /><polyline points="12,6 12,12 16,14" />
+        </svg>
+        <span>SLA Monitor</span>
+        <span class="badge badge-red ml-auto">2</span>
+      </a>
+      <a href="#" class="nav-item">
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <circle cx="12" cy="12" r="3" /><path d="M19.07 4.93l-1.41 1.41M5.34 18.66l-1.41-1.41M20 12h-2M6 12H4M19.07 19.07l-1.41-1.41M5.34 5.34L3.93 3.93M12 20v-2M12 6V4" />
+        </svg>
+        <span>Settings</span>
+      </a>
+    </nav>
+  </aside>
+  
+<!-- Top Bar -->
+  <header class="topbar">
+    <div class="flex items-center gap-4">
+      <button id="mobileSidebarToggle" class="lg:hidden p-2">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line
+            x1="3"
+            y1="18"
+            x2="21"
+            y2="18"
+          />
+        </svg>
+      </button>
+      <div class="page-title">
+        <h1>Dashboard</h1>
+        <span class="breadcrumb">Overview · Real-time</span>
+      </div>
+    </div>
+    <div class="flex items-center gap-4">
+      <button class="btn-primary" id="newTicketBtn">New Ticket</button>
+      <div class="avatar">SR</div>
+    </div>
+  </header>
+  
+<!-- Main Content -->
+  <main class="main-content">
+    <div class="stats-row">
+      <div class="stat-box">
+        <span class="stat-label">Open Tickets</span>
+        <div class="stat-value text-accent-blue">247</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Urgent / SLA Breach</span>
+        <div class="stat-value text-accent-red">8</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Resolved Today</span>
+        <div class="stat-value text-accent-green">84</div>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Avg. Resolution Time</span>
+        <div class="stat-value text-accent-purple">3.2h</div>
+      </div>
+    </div>
+    
+<!-- Kanban Board -->
+    <div class="kanban-container">
+      <div class="kanban-column" id="col-open">
+        <div class="column-header">
+          <span>Open</span>
+          <span class="column-count">2</span>
+        </div>
+        <div class="column-body"></div>
+      </div>
+
+      <div class="kanban-column" id="col-in_progress">
+        <div class="column-header">
+          <span>In Progress</span>
+          <span class="column-count">2</span>
+        </div>
+        <div class="column-body"></div>
+      </div>
+
+      <div class="kanban-column" id="col-pending">
+        <div class="column-header">
+          <span>Pending</span>
+          <span class="column-count">0</span>
+        </div>
+        <div class="column-body"></div>
+      </div>
+
+      <div class="kanban-column" id="col-resolved">
+        <div class="column-header">
+          <span>Resolved</span>
+          <span class="column-count">0</span>
+        </div>
+        <div class="column-body"></div>
+      </div>
+    </div>
+  </main>
+  
+<!-- Detail Panel -->
+  <div class="panel-overlay" id="panelOverlay"></div>
+  <aside class="detail-panel" id="detailPanel">
+    <div class="panel-header">
+      <span class="font-bold text-accent-blue">TKT-DETAIL</span>
+      <button id="panelCloseBtn" class="p-2 hover:bg-white/10 rounded-md">
+        <svg
+          width="20"
+          height="20"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+        >
+          <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
+        </svg>
+      </button>
+    </div>
+    <div class="panel-content">
+      <h2 class="text-xl font-bold mb-6">Ticket Title</h2>
+      <div class="grid grid-cols-2 gap-6 mb-8 text-sm">
+        <div>
+          <label class="text-muted block mb-1">Status</label>
+          <span class="text-primary font-medium">Open</span>
+        </div>
+        <div>
+          <label class="text-muted block mb-1">Priority</label>
+          <span class="text-accent-red font-bold">Urgent</span>
+        </div>
+      </div>
+      <div class="mb-8">
+        <label class="text-muted block mb-2 text-sm uppercase font-bold tracking-tighter">
+          Description
+        </label>
+        <p class="text-secondary leading-relaxed">
+          The user is reporting issues with wire transfers. The transaction fails with an obscure error code "ERR_503_BANK_OP".
+        </p>
+      </div>
+    </div>
+  </aside>
+</div>
