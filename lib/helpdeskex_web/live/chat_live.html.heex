@@ -367,7 +367,7 @@
 <!-- Hover Actions -->
                   <%= if !msg.deleted_at do %>
                     <div class={[
-                      "absolute -top-4 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white dark:bg-[#1C1C1F] border border-slate-100 dark:border-white/10 rounded-full px-1 py-0.5 shadow-lg z-10",
+                      "absolute -bottom-6 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white dark:bg-[#1C1C1F] border border-slate-100 dark:border-white/10 rounded-full px-1 py-0.5 shadow-lg z-10",
                       msg.sender_id == @current_user.id && "right-0",
                       msg.sender_id != @current_user.id && "left-0"
                     ]}>
