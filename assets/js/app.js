@@ -187,7 +187,7 @@ let Hooks = {
           theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"
         });
 
-        picker.on('emoji', selection => {
+        picker.addEventListener('emoji:select', selection => {
           this.el.value += selection.emoji;
           this.el.dispatchEvent(new Event("input", { bubbles: true }));
           document.getElementById("emoji-picker-container").classList.add("hidden");

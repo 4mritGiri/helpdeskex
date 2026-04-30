@@ -216,7 +216,7 @@
         
 <!-- Messages stream -->
         <div
-          class="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col pt-10"
+          class="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col pt-10 bg-slate-50/50 dark:bg-[#111113]"
           id="chat-messages-wrap"
           phx-hook="ChatScroll"
         >
@@ -259,13 +259,13 @@
                 <div class="flex items-end gap-2 relative">
                   <!-- Message Bubble -->
                   <div class={[
-                    "relative px-4 py-3 text-[14px] leading-[1.5] min-w-[100px]",
+                    "relative px-4 py-3 text-[14.5px] leading-[1.5] min-w-[100px] shadow-sm transition-transform hover:scale-[1.01] duration-200",
                     msg.sender_id == @current_user.id &&
-                      "bg-[#8B5CF6] text-white rounded-[20px] rounded-br-[4px]",
+                      "bg-gradient-to-br from-[#8B5CF6] to-[#7c3aed] text-white rounded-[20px] rounded-tr-[4px] shadow-violet-500/20",
                     msg.sender_id != @current_user.id &&
-                      "bg-slate-100 dark:bg-[#1E1E20] text-slate-800 dark:text-[#E4E4E5] rounded-[20px] rounded-bl-[4px]",
+                      "bg-white dark:bg-[#1C1C1F] border border-slate-100 dark:border-white/[0.05] text-slate-800 dark:text-[#E4E4E5] rounded-[20px] rounded-tl-[4px]",
                     msg.deleted_at &&
-                      "bg-transparent border border-dashed border-slate-300 dark:border-zinc-700 text-slate-400 !rounded-[20px]"
+                      "!bg-transparent border border-dashed border-slate-300 dark:border-zinc-700 text-slate-400 !rounded-[20px] !shadow-none !scale-100"
                   ]}>
                     
 <!-- Replied Message Preview -->
@@ -479,58 +479,70 @@
               </button>
             </div>
           <% end %>
-          
-<!-- Main Input Pill container -->
+
+          <%!-- Premium Chat Input --%>
           <form
             id="chat-input-form"
             phx-submit={if @editing_message, do: "save_edit", else: "send_message"}
             phx-change="validate_upload"
             class={[
-              "flex items-center gap-3 p-1.5 bg-slate-100 dark:bg-[#1A1A1D] rounded-full",
+              "flex items-center gap-1.5 px-2 py-1.5 bg-white dark:bg-[#1C1C1F] border border-slate-200 dark:border-white/[0.08] rounded-2xl shadow-sm transition-all duration-200 focus-within:border-[#8B5CF6]/50 focus-within:shadow-[0_0_0_4px_rgba(139,92,246,0.08)]",
               (@reply_to || @editing_message || @uploads.attachments.entries != []) &&
                 "rounded-t-none mx-4"
             ]}
           >
-            <!-- Attachment Button -->
-            <div class="pl-1">
-              <label class="flex items-center justify-center size-9 rounded-full bg-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300 hover:bg-slate-200/50 dark:hover:bg-white/5 transition-colors cursor-pointer">
-                <.icon name="hero-paper-clip" class="w-[22px] h-[22px]" />
-                <div class="hidden">
-                  <.live_file_input upload={@uploads.attachments} />
-                </div>
-              </label>
-            </div>
-            
-<!-- Emoji Button -->
-            <div class="px-1">
-              <button
-                id="emoji-picker-btn"
-                type="button"
-                class="flex items-center justify-center size-9 rounded-full bg-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300 hover:bg-slate-200/50 dark:hover:bg-white/5 transition-colors"
-              >
-                <.icon name="hero-face-smile" class="w-[22px] h-[22px]" />
-              </button>
-            </div>
-            
-<!-- Vertical thin separator line -->
-            <div class="h-6 w-px bg-slate-200 dark:bg-white/10 shrink-0"></div>
+            <%!-- Attachment Button --%>
+            <label
+              id="attachment-label"
+              class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl text-slate-400 dark:text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-all cursor-pointer"
+              title="Attach file"
+            >
+              <.icon name="hero-paper-clip" class="w-[18px] h-[18px]" />
+              <div class="hidden">
+                <.live_file_input upload={@uploads.attachments} />
+              </div>
+            </label>
 
+            <%!-- Emoji Button --%>
+            <button
+              id="emoji-picker-btn"
+              type="button"
+              class="flex items-center justify-center w-9 h-9 shrink-0 rounded-xl text-slate-400 dark:text-zinc-500 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-50 dark:hover:bg-violet-500/10 transition-all"
+              title="Emoji"
+            >
+              <.icon name="hero-face-smile" class="w-[18px] h-[18px]" />
+            </button>
+
+            <%!-- Divider --%>
+            <div class="h-4 w-px bg-slate-200 dark:bg-white/[0.08] shrink-0 mx-0.5"></div>
+
+            <%!-- Text Input --%>
             <input
               id="chat-msg-input"
               type="text"
               name="body"
               value={if @editing_message, do: @editing_message.body, else: @message_input}
-              placeholder="Type a message..."
-              class="flex-1 bg-transparent border-none focus:ring-0 px-2 py-3.5 text-[14px] text-slate-900 dark:text-white placeholder:text-slate-500 dark:placeholder:text-[#616161] min-w-0 font-medium"
+              placeholder={if @editing_message, do: "Edit message...", else: "Write a message…"}
+              class="flex-1 bg-transparent border-none outline-none focus:outline-none focus:ring-0 px-2 py-2.5 text-[13.5px] leading-[1.5] text-slate-800 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-600 min-w-0 font-normal"
               autocomplete="off"
               phx-hook="ChatInput"
               autofocus
             />
-            
-<!-- Send Button -->
+
+            <%!-- Send Button --%>
             <button
               type="submit"
-              class="flex items-center justify-center size-10 rounded-full bg-[#8B5CF6] hover:bg-[#7e53ea] text-white transition-colors active:scale-[0.97] shrink-0 mr-1 disabled:opacity-50"
+              id="chat-send-btn"
+              class={[
+                "flex items-center justify-center w-9 h-9 shrink-0 rounded-xl transition-all duration-150 active:scale-90",
+                if(
+                  String.trim(@message_input || "") == "" && @uploads.attachments.entries == [] &&
+                    !@editing_message,
+                  do: "text-slate-400 dark:text-zinc-600 cursor-not-allowed",
+                  else:
+                    "bg-[#8B5CF6] hover:bg-[#7c3aed] text-white shadow-md shadow-violet-500/25 hover:shadow-violet-500/40"
+                )
+              ]}
               disabled={
                 String.trim(@message_input || "") == "" && @uploads.attachments.entries == [] &&
                   !@editing_message
@@ -538,7 +550,7 @@
             >
               <.icon
                 name="hero-paper-airplane"
-                class="w-[18px] h-[18px] -rotate-[30deg] ml-0.5 mt-0.5 stroke-2"
+                class="w-[17px] h-[17px] -rotate-[40deg] translate-x-px -translate-y-px"
               />
             </button>
           </form>
