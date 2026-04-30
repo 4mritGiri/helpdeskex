@@ -163,7 +163,13 @@ defmodule HelpdeskexWeb.ConversationChannel do
   end
 
   defp format_attachment(att) do
-    %{id: att.id, filename: att.filename, content_type: att.content_type, size: att.size, path: att.path}
+    %{
+      id: att.id,
+      filename: att.filename,
+      content_type: att.content_type,
+      size: att.size,
+      path: att.path
+    }
   end
 
   defp initials(nil), do: "??"

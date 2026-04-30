@@ -12,7 +12,8 @@ defmodule Helpdeskex.Chat do
   alias Helpdeskex.Chat.Conversation
   alias Helpdeskex.Chat.Participant
   alias Helpdeskex.Chat.Message
-  alias Helpdeskex.Chat.MessageStatus
+  alias Helpdeskex.Chat.Todo
+  alias Helpdeskex.Chat.Note
   alias Helpdeskex.Chat.Attachment
   alias Helpdeskex.Accounts.User
 
@@ -62,7 +63,8 @@ defmodule Helpdeskex.Chat do
         order_by: [desc: coalesce(last_msg.last_msg_at, c.inserted_at)],
         preload: [
           participants: [user: []],
-          messages: ^from(m in Message, order_by: [desc: m.inserted_at], limit: 1, preload: [:sender])
+          messages:
+            ^from(m in Message, order_by: [desc: m.inserted_at], limit: 1, preload: [:sender])
         ]
     )
   end
@@ -150,7 +152,10 @@ defmodule Helpdeskex.Chat do
         |> Repo.insert()
 
       for user_id <- user_ids do
-        role = if user_id == attrs[:created_by_id] || user_id == attrs["created_by_id"], do: "admin", else: "member"
+        role =
+          if user_id == attrs[:created_by_id] || user_id == attrs["created_by_id"],
+            do: "admin",
+            else: "member"
 
         %Participant{}
         |> Participant.changeset(%{conversation_id: conv.id, user_id: user_id, role: role})
@@ -230,9 +235,11 @@ defmodule Helpdeskex.Chat do
         message = Repo.preload(message, [:sender, :attachments, reply_to: [:sender]])
         broadcast_conversation(conversation_id, {:new_message, message})
 
-        participants = Repo.all(from p in Participant, where: p.conversation_id == ^conversation_id)
+        participants =
+          Repo.all(from p in Participant, where: p.conversation_id == ^conversation_id)
+
         for p <- participants, p.user_id != sender_id do
-           broadcast_user(p.user_id, {:new_message_notification, message})
+          broadcast_user(p.user_id, {:new_message_notification, message})
         end
 
         {:ok, message}
@@ -311,7 +318,10 @@ defmodule Helpdeskex.Chat do
     )
 
     # Broadcast read receipt to conversation members
-    broadcast_conversation(conversation_id, {:messages_read, %{user_id: user_id, conversation_id: conversation_id}})
+    broadcast_conversation(
+      conversation_id,
+      {:messages_read, %{user_id: user_id, conversation_id: conversation_id}}
+    )
 
     :ok
   end
@@ -354,10 +364,11 @@ defmodule Helpdeskex.Chat do
 
   @doc "Gets the last time the user read any conversation"
   def get_user_last_seen(user_id) do
-    query = from p in Participant,
-      where: p.user_id == ^user_id,
-      select: max(p.last_read_at)
-    
+    query =
+      from p in Participant,
+        where: p.user_id == ^user_id,
+        select: max(p.last_read_at)
+
     Repo.one(query)
   end
 
@@ -381,17 +392,22 @@ defmodule Helpdeskex.Chat do
     |> Repo.insert()
   end
 
-  alias Helpdeskex.Chat.Todo
-  alias Helpdeskex.Chat.Note
-
   @doc "List todos for a conversation."
   def list_todos(conversation_id) do
-    Repo.all(from t in Todo, where: t.conversation_id == ^conversation_id, order_by: [desc: t.inserted_at])
+    Repo.all(
+      from t in Todo,
+        where: t.conversation_id == ^conversation_id,
+        order_by: [desc: t.inserted_at]
+    )
   end
 
   @doc "List notes for a conversation."
   def list_notes(conversation_id) do
-    Repo.all(from n in Note, where: n.conversation_id == ^conversation_id, order_by: [desc: n.inserted_at])
+    Repo.all(
+      from n in Note,
+        where: n.conversation_id == ^conversation_id,
+        order_by: [desc: n.inserted_at]
+    )
   end
 
   @doc "Create a todo."
@@ -399,6 +415,13 @@ defmodule Helpdeskex.Chat do
     %Todo{}
     |> Todo.changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc "Update a todo."
+  def update_todo(%Todo{} = todo, attrs) do
+    todo
+    |> Todo.changeset(attrs)
+    |> Repo.update()
   end
 
   @doc "Create a note."

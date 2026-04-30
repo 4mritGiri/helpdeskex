@@ -24,7 +24,16 @@ defmodule Helpdeskex.Chat.Message do
 
   def changeset(message, attrs) do
     message
-    |> cast(attrs, [:body, :type, :metadata, :edited_at, :deleted_at, :conversation_id, :sender_id, :reply_to_id])
+    |> cast(attrs, [
+      :body,
+      :type,
+      :metadata,
+      :edited_at,
+      :deleted_at,
+      :conversation_id,
+      :sender_id,
+      :reply_to_id
+    ])
     |> validate_required([:conversation_id, :sender_id])
     |> validate_inclusion(:type, ["text", "image", "file", "system"])
   end
