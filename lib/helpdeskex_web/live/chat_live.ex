@@ -318,8 +318,10 @@ defmodule HelpdeskexWeb.ChatLive do
 
   def handle_event("close_forward_modal", _params, socket) do
     {:noreply,
-     socket |> assign(:show_forward_modal, false)
-     |> assign(:active_reaction_picker, nil) |> assign(:forwarding_message_id, nil)}
+     socket
+     |> assign(:show_forward_modal, false)
+     |> assign(:active_reaction_picker, nil)
+     |> assign(:forwarding_message_id, nil)}
   end
 
   def handle_event("forward_message", %{"to_conversation_id" => conv_id}, socket) do
@@ -336,7 +338,7 @@ defmodule HelpdeskexWeb.ChatLive do
         {:noreply,
          socket
          |> assign(:show_forward_modal, false)
-     |> assign(:active_reaction_picker, nil)
+         |> assign(:active_reaction_picker, nil)
          |> put_flash(:info, "Message forwarded")}
 
       _ ->
@@ -578,7 +580,9 @@ defmodule HelpdeskexWeb.ChatLive do
   @impl true
   def handle_event("toggle_reaction_picker", %{"message_id" => msg_id}, socket) do
     current = socket.assigns.active_reaction_picker
-    {:noreply, assign(socket, :active_reaction_picker, if(current == msg_id, do: nil, else: msg_id))}
+
+    {:noreply,
+     assign(socket, :active_reaction_picker, if(current == msg_id, do: nil, else: msg_id))}
   end
 
   @impl true
@@ -663,11 +667,6 @@ defmodule HelpdeskexWeb.ChatLive do
     # Update conversation list to show latest message preview
     conversations = Chat.list_conversations(user.id)
     {:noreply, assign(socket, :conversations, conversations)}
-  end
-
-  @impl true
-  def handle_info({:message_updated, message}, socket) do
-    {:noreply, stream_insert(socket, :messages, message)}
   end
 
   @impl true

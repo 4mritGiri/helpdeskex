@@ -216,7 +216,7 @@
         
 <!-- Messages stream -->
         <div
-          class="flex-1 overflow-y-auto px-5 py-6 flex flex-col gap-1 scroll-smooth"
+          class="flex-1 overflow-y-auto px-5 pt-6 pb-12 flex flex-col gap-1 scroll-smooth"
           id="chat-messages-wrap"
           phx-hook="ChatScroll"
         >
@@ -231,7 +231,7 @@
             </div>
           <% end %>
 
-          <div id="chat-messages" phx-update="stream" class="flex flex-col gap-1 mt-auto pb-6">
+          <div id="chat-messages" phx-update="stream" class="flex flex-col gap-2 mt-auto pb-6">
             <div
               :for={{id, msg} <- @streams.messages}
               id={id}
@@ -262,7 +262,7 @@
                 <div class="flex items-end gap-2 relative">
                   <!-- Message Bubble -->
                   <div class={[
-                    "relative px-4 py-3 text-[14.5px] leading-[1.5] min-w-[100px] shadow-sm transition-transform hover:scale-[1.01] duration-200",
+                    "relative px-4 py-3 text-[14px] min-h-[44px] leading-[1.5] min-w-[100px] shadow-sm transition-transform hover:scale-[1.01] duration-200",
                     msg.sender_id == @current_user.id &&
                       "bg-gradient-to-br from-[#3797f0] via-[#7c3aed] to-[#8B5CF6] text-white shadow-lg rounded-[20px] shadow-violet-500/20",
                     msg.sender_id != @current_user.id &&
@@ -346,7 +346,7 @@
                         <span class="whitespace-pre-wrap break-words">{msg.body}</span>
                     <% end %>
                     
-                    <!-- Meta (Time & Ticks) -->
+<!-- Meta (Time & Ticks) -->
                     <div class={[
                       "flex items-center justify-end gap-1 mt-1 -mb-1",
                       msg.sender_id == @current_user.id && "text-[#DCD5F9]",
@@ -364,24 +364,30 @@
                     </div>
                   </div>
                   
-                  <!-- Reactions Display (Instagram Style) -->
+<!-- Reactions Display (Instagram Style) -->
                   <%= if Map.get(msg, :reactions) && msg.reactions != [] do %>
                     <% unique_reactions = msg.reactions |> Enum.map(& &1.emoji) |> Enum.uniq()
-                       reacted_by_me_any = Enum.any?(msg.reactions, & &1.user_id == @current_user.id) %>
-                    <div 
+
+                    reacted_by_me_any =
+                      Enum.any?(msg.reactions, &(&1.user_id == @current_user.id)) %>
+                    <div
                       class={[
-                        "absolute -bottom-3 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full z-30 shadow-md border cursor-pointer select-none transition-transform hover:scale-110 active:scale-95 group/pill",
+                        "absolute -bottom-1.5 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full z-30 shadow-md border cursor-pointer select-none transition-transform hover:scale-110 active:scale-95 group/pill",
                         msg.sender_id == @current_user.id && "right-3",
                         msg.sender_id != @current_user.id && "left-3",
-                        reacted_by_me_any && "bg-violet-50 border-violet-200 dark:bg-[#2D2D3D] dark:border-violet-800",
-                        !reacted_by_me_any && "bg-white border-slate-100 dark:bg-[#262629] dark:border-white/10"
+                        reacted_by_me_any &&
+                          "bg-violet-50 border-violet-200 dark:bg-[#2D2D3D] dark:border-violet-800",
+                        !reacted_by_me_any &&
+                          "bg-white border-slate-100 dark:bg-[#262629] dark:border-white/10"
                       ]}
                       phx-click="toggle_reaction_picker"
                       phx-value-message_id={msg.id}
                     >
                       <div class="flex -space-x-1">
                         <%= for emoji <- Enum.take(unique_reactions, 3) do %>
-                          <span class="text-[13px] filter drop-shadow-sm group-hover/pill:scale-110 transition-transform">{emoji}</span>
+                          <span class="text-[13px] filter drop-shadow-sm group-hover/pill:scale-110 transition-transform">
+                            {emoji}
+                          </span>
                         <% end %>
                       </div>
                       <%= if length(msg.reactions) > 1 do %>
@@ -395,7 +401,7 @@
                       <% end %>
                     </div>
                   <% end %>
-
+                  
 <!-- Hover Actions -->
                   <%= if !msg.deleted_at do %>
                     <div class={[
@@ -419,23 +425,52 @@
                         <button
                           phx-click="toggle_reaction_picker"
                           phx-value-message_id={msg.id}
-                          class={["p-1 rounded-full transition-colors flex items-center justify-center h-6 w-6", 
-                                 @active_reaction_picker == msg.id && "bg-violet-100 text-violet-600 dark:bg-violet-900/40 text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white"]}
+                          class={[
+                            "p-1 rounded-full transition-colors flex items-center justify-center h-6 w-6",
+                            @active_reaction_picker == msg.id &&
+                              "bg-violet-100 text-violet-600 dark:bg-violet-900/40 text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white"
+                          ]}
                           title="More Reactions"
                         >
-                          <.icon name={if @active_reaction_picker == msg.id, do: "hero-x-mark", else: "hero-plus"} class="w-3.5 h-3.5" />
+                          <.icon
+                            name={
+                              if @active_reaction_picker == msg.id,
+                                do: "hero-x-mark",
+                                else: "hero-plus"
+                            }
+                            class="w-3.5 h-3.5"
+                          />
                         </button>
 
                         <%= if @active_reaction_picker == msg.id do %>
-                          <div 
+                          <div
                             class="absolute bottom-full mb-2 right-0 bg-white dark:bg-[#1C1C1F] border border-slate-100 dark:border-white/10 rounded-2xl shadow-2xl p-2 z-50 grid grid-cols-6 gap-1 min-w-[180px]"
                             phx-click-away="close_reaction_picker"
                           >
-                            <% more_emojis = ["💯", "🙏", "👏", "🎉", "😢", "😡", "🤔", "👀", "✅", "❌", "🚀", "✨", "🙌", "💔", "🌟", "💡", "🎨", "🎭"] %>
+                            <% more_emojis = [
+                              "💯",
+                              "🙏",
+                              "👏",
+                              "🎉",
+                              "😢",
+                              "😡",
+                              "🤔",
+                              "👀",
+                              "✅",
+                              "❌",
+                              "🚀",
+                              "✨",
+                              "🙌",
+                              "💔",
+                              "🌟",
+                              "💡",
+                              "🎨",
+                              "🎭"
+                            ] %>
                             <%= for e <- more_emojis do %>
-                              <button 
-                                phx-click="toggle_reaction" 
-                                phx-value-message_id={msg.id} 
+                              <button
+                                phx-click="toggle_reaction"
+                                phx-value-message_id={msg.id}
                                 phx-value-emoji={e}
                                 class="p-1.5 hover:bg-slate-100 dark:hover:bg-white/5 rounded-lg text-lg transition-transform hover:scale-125"
                               >
@@ -634,7 +669,6 @@
             </button>
 
             <%!-- Divider --%>
-            
 
             <%!-- Text Input --%>
             <textarea
@@ -777,7 +811,7 @@
           <% end %>
         </div>
         
-        <!-- Productivity Input Area -->
+<!-- Productivity Input Area -->
         <div class="px-6 py-4 bg-transparent">
           <form
             phx-submit={if @active_tab == "todos", do: "save_todo", else: "save_note"}
