@@ -18,6 +18,7 @@ defmodule Helpdeskex.Chat.Message do
 
     has_many :statuses, Helpdeskex.Chat.MessageStatus
     has_many :attachments, Helpdeskex.Chat.Attachment
+    has_many :reactions, Helpdeskex.Chat.MessageReaction
 
     timestamps(type: :utc_datetime)
   end

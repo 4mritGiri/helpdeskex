@@ -6,8 +6,8 @@ defmodule Helpdeskex.Chat.MessageReaction do
   @foreign_key_type :binary_id
   schema "chat_message_reactions" do
     field :emoji, :string
-    field :message_id, :binary_id
-    field :user_id, :binary_id
+    belongs_to :message, Helpdeskex.Chat.Message
+    belongs_to :user, Helpdeskex.Accounts.User
 
     timestamps(type: :utc_datetime)
   end
@@ -15,7 +15,7 @@ defmodule Helpdeskex.Chat.MessageReaction do
   @doc false
   def changeset(message_reaction, attrs) do
     message_reaction
-    |> cast(attrs, [:emoji])
-    |> validate_required([:emoji])
+    |> cast(attrs, [:emoji, :message_id, :user_id])
+    |> validate_required([:emoji, :message_id, :user_id])
   end
 end

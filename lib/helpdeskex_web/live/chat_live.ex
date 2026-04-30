@@ -98,6 +98,7 @@ defmodule HelpdeskexWeb.ChatLive do
      |> assign(:sidebar_collapsed, false)
      |> assign(:show_right_sidebar, false)
      |> assign(:show_forward_modal, false)
+     |> assign(:active_reaction_picker, nil)
      |> assign(:forwarding_message_id, nil)
      |> assign(:active_tab, "todos")
      |> assign(:mention_query, nil)
@@ -317,7 +318,8 @@ defmodule HelpdeskexWeb.ChatLive do
 
   def handle_event("close_forward_modal", _params, socket) do
     {:noreply,
-     socket |> assign(:show_forward_modal, false) |> assign(:forwarding_message_id, nil)}
+     socket |> assign(:show_forward_modal, false)
+     |> assign(:active_reaction_picker, nil) |> assign(:forwarding_message_id, nil)}
   end
 
   def handle_event("forward_message", %{"to_conversation_id" => conv_id}, socket) do
@@ -334,6 +336,7 @@ defmodule HelpdeskexWeb.ChatLive do
         {:noreply,
          socket
          |> assign(:show_forward_modal, false)
+     |> assign(:active_reaction_picker, nil)
          |> put_flash(:info, "Message forwarded")}
 
       _ ->
@@ -346,44 +349,51 @@ defmodule HelpdeskexWeb.ChatLive do
     {:noreply, socket}
   end
 
-  def handle_event("add_todo", _params, socket) do
+  def handle_event("save_todo", %{"content" => title}, socket) do
     user = socket.assigns.current_user
     conv = socket.assigns.active_conversation
 
-    # In a real app we'd show an input first, here we'll create a default one to show it works
-    attrs = %{
-      "conversation_id" => conv.id,
-      "created_by_id" => user.id,
-      "title" => "New Task",
-      "is_completed" => false
-    }
+    if title != "" do
+      attrs = %{
+        "conversation_id" => conv.id,
+        "created_by_id" => user.id,
+        "title" => title,
+        "is_completed" => false
+      }
 
-    case Chat.create_todo(attrs) do
-      {:ok, todo} ->
-        {:noreply, stream_insert(socket, :todos, todo, at: 0)}
+      case Chat.create_todo(attrs) do
+        {:ok, todo} ->
+          {:noreply, stream_insert(socket, :todos, todo, at: 0)}
 
-      _ ->
-        {:noreply, socket}
+        _ ->
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
     end
   end
 
-  def handle_event("add_note", _params, socket) do
+  def handle_event("save_note", %{"content" => body}, socket) do
     user = socket.assigns.current_user
     conv = socket.assigns.active_conversation
 
-    attrs = %{
-      "conversation_id" => conv.id,
-      "created_by_id" => user.id,
-      "body" => "Shared note started...",
-      "attachments" => %{}
-    }
+    if body != "" do
+      attrs = %{
+        "conversation_id" => conv.id,
+        "created_by_id" => user.id,
+        "body" => body,
+        "attachments" => %{}
+      }
 
-    case Chat.create_note(attrs) do
-      {:ok, note} ->
-        {:noreply, stream_insert(socket, :notes, note, at: 0)}
+      case Chat.create_note(attrs) do
+        {:ok, note} ->
+          {:noreply, stream_insert(socket, :notes, note, at: 0)}
 
-      _ ->
-        {:noreply, socket}
+        _ ->
+          {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
     end
   end
 
@@ -566,6 +576,34 @@ defmodule HelpdeskexWeb.ChatLive do
   end
 
   @impl true
+  def handle_event("toggle_reaction_picker", %{"message_id" => msg_id}, socket) do
+    current = socket.assigns.active_reaction_picker
+    {:noreply, assign(socket, :active_reaction_picker, if(current == msg_id, do: nil, else: msg_id))}
+  end
+
+  @impl true
+  def handle_event("close_reaction_picker", _params, socket) do
+    {:noreply, assign(socket, :active_reaction_picker, nil)}
+  end
+
+  @impl true
+  def handle_event("toggle_reaction", %{"message_id" => msg_id, "emoji" => emoji}, socket) do
+    user = socket.assigns.current_user
+    msg = Chat.get_message!(msg_id)
+
+    already_reacted =
+      Enum.any?(msg.reactions, fn r -> r.user_id == user.id and r.emoji == emoji end)
+
+    if already_reacted do
+      Chat.remove_reaction(msg_id, user.id, emoji)
+    else
+      Chat.add_reaction(msg_id, user.id, emoji)
+    end
+
+    {:noreply, socket}
+  end
+
+  @impl true
   def handle_event("toggle_sidebar", _params, socket) do
     {:noreply, assign(socket, :sidebar_collapsed, !socket.assigns.sidebar_collapsed)}
   end
@@ -581,6 +619,11 @@ defmodule HelpdeskexWeb.ChatLive do
   end
 
   # ── PubSub handlers ───────────────────────────────────────────────────────
+
+  @impl true
+  def handle_info({:message_updated, message}, socket) do
+    {:noreply, stream_insert(socket, :messages, message)}
+  end
 
   @impl true
   def handle_info({:user_typing, user_id, full_name}, socket) do

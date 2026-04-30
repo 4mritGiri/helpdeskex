@@ -15,6 +15,7 @@ defmodule Helpdeskex.Chat do
   alias Helpdeskex.Chat.Todo
   alias Helpdeskex.Chat.Note
   alias Helpdeskex.Chat.Attachment
+  alias Helpdeskex.Chat.MessageReaction
   alias Helpdeskex.Accounts.User
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -203,7 +204,7 @@ defmodule Helpdeskex.Chat do
         where: m.conversation_id == ^conversation_id and is_nil(m.deleted_at),
         order_by: [desc: m.inserted_at],
         limit: ^limit,
-        preload: [:sender, :attachments, reply_to: [:sender]]
+        preload: [:sender, :attachments, :reactions, reply_to: [:sender]]
 
     query =
       if before_id do
@@ -232,7 +233,7 @@ defmodule Helpdeskex.Chat do
 
     case result do
       {:ok, message} ->
-        message = Repo.preload(message, [:sender, :attachments, reply_to: [:sender]])
+        message = Repo.preload(message, [:sender, :attachments, :reactions, reply_to: [:sender]])
         broadcast_conversation(conversation_id, {:new_message, message})
 
         participants =
@@ -295,7 +296,7 @@ defmodule Helpdeskex.Chat do
   @doc "Get a single message with preloads."
   def get_message!(id) do
     Repo.get!(Message, id)
-    |> Repo.preload([:sender, :attachments, reply_to: [:sender]])
+    |> Repo.preload([:sender, :attachments, :reactions, reply_to: [:sender]])
   end
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -429,6 +430,58 @@ defmodule Helpdeskex.Chat do
     %Note{}
     |> Note.changeset(attrs)
     |> Repo.insert()
+  end
+
+  @doc "List reactions for a message."
+  def list_reactions(message_id) do
+    Repo.all(
+      from r in MessageReaction,
+        where: r.message_id == ^message_id,
+        join: u in assoc(r, :user),
+        preload: [user: u]
+    )
+  end
+
+  @doc "Add a reaction to a message."
+  def add_reaction(message_id, user_id, emoji) do
+    changeset =
+      %MessageReaction{}
+      |> MessageReaction.changeset(%{emoji: emoji, message_id: message_id, user_id: user_id})
+
+    case Repo.insert(changeset,
+           on_conflict: :nothing,
+           conflict_target: [:message_id, :user_id, :emoji]
+         ) do
+      {:ok, reaction} ->
+        msg = Repo.get!(Message, message_id)
+
+        broadcast_conversation(
+          msg.conversation_id,
+          {:message_reaction_added, %{message_id: message_id, user_id: user_id, emoji: emoji}}
+        )
+
+        {:ok, reaction}
+
+      {:error, changeset} ->
+        {:error, changeset}
+    end
+  end
+
+  @doc "Remove a reaction from a message."
+  def remove_reaction(message_id, user_id, emoji) do
+    msg = Repo.get!(Message, message_id)
+
+    Repo.delete_all(
+      from r in MessageReaction,
+        where: r.message_id == ^message_id and r.user_id == ^user_id and r.emoji == ^emoji
+    )
+
+    broadcast_conversation(
+      msg.conversation_id,
+      {:message_reaction_removed, %{message_id: message_id, user_id: user_id, emoji: emoji}}
+    )
+
+    :ok
   end
 
   @doc "Changeset for a new message (used in forms)."

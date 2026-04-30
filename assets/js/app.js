@@ -28,6 +28,16 @@ import topbar from "../vendor/topbar"
 import { createPicker } from "../vendor/picmo"
 
 let Hooks = {
+  ResetForm: {
+    mounted() {
+      this.el.addEventListener("submit", () => {
+        const input = this.el.querySelector('input[type="text"], textarea');
+        if (input) {
+          setTimeout(() => { input.value = ""; }, 50);
+        }
+      });
+    }
+  },
   // ... existing hooks ...
   Kanban: {
     mounted() {
@@ -149,6 +159,15 @@ let Hooks = {
     mounted() {
       this.typingTimer = null;
 
+      // Auto-resize textarea
+      const resize = () => {
+        this.el.style.height = "auto";
+        this.el.style.height = `${this.el.scrollHeight}px`;
+      };
+      
+      this.el.addEventListener("input", resize);
+      resize(); // Initial call
+
       // Handle paste (Images)
       this.el.addEventListener("paste", (e) => {
         const items = (e.clipboardData || e.originalEvent.clipboardData).items;
@@ -179,25 +198,49 @@ let Hooks = {
         }, 3000);
       });
 
-      // Initialize Emoji Picker
+      // Initialize Emoji Picker with click-away support
       const emojiBtn = document.getElementById("emoji-picker-btn");
-      if (emojiBtn) {
+      const container = document.getElementById("emoji-picker-container");
+      
+      if (emojiBtn && container) {
         let picker = null;
-        emojiBtn.addEventListener("click", () => {
-          const container = document.getElementById("emoji-picker-container");
-          container.classList.toggle("hidden");
+        
+        const closePicker = (e) => {
+          if (!container.contains(e.target) && !emojiBtn.contains(e.target)) {
+            container.classList.add("hidden");
+            document.removeEventListener("click", closePicker);
+          }
+        };
+
+        emojiBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          const isHidden = container.classList.toggle("hidden");
           
-          // Lazy init for Brave browser compatibility (don't init while display:none)
-          if (!container.classList.contains("hidden") && !picker) {
-            picker = createPicker({
-              rootElement: container,
-              theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"
-            });
-            picker.addEventListener('emoji:select', selection => {
-              this.el.value += selection.emoji;
-              this.el.dispatchEvent(new Event("input", { bubbles: true }));
-              container.classList.add("hidden");
-            });
+          if (!isHidden) {
+            document.addEventListener("click", closePicker);
+            // Lazy init
+            if (!picker) {
+              try {
+                picker = createPicker({
+                  rootElement: container,
+                  theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
+                  autoFocusSearch: false
+                });
+                
+                picker.addEventListener('emoji:select', selection => {
+                  const emoji = selection.emoji || selection;
+                  if (emoji) {
+                    const pos = this.el.selectionStart || this.el.value.length;
+                    this.el.value = this.el.value.substring(0, pos) + emoji + this.el.value.substring(pos);
+                    this.el.dispatchEvent(new Event("input", { bubbles: true }));
+                    this.el.focus();
+                    container.classList.add("hidden");
+                  }
+                });
+              } catch (err) {
+                console.error("Emoji picker failed to init:", err);
+              }
+            }
           }
         });
       }
@@ -213,7 +256,12 @@ let Hooks = {
           }
         }
       });
-this.el.addEventListener("keydown", (e) => {
+      // Reset height when form is submitted
+      this.el.closest("form").addEventListener("submit", () => {
+        setTimeout(() => resize(), 10);
+      });
+
+      this.el.addEventListener("keydown", (e) => {
         // ... same shortcut logic ...
         // Enter to submit (Shift+Enter for newline)
         if (e.key === "Enter" && !e.shiftKey) {
