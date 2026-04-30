@@ -744,6 +744,17 @@ defmodule HelpdeskexWeb.ChatLive do
 
   def format_last_seen(_), do: "Offline"
 
+  def decode_attachments(nil), do: []
+
+  def decode_attachments(metadata) when is_binary(metadata) do
+    case Jason.decode(metadata) do
+      {:ok, %{"attachments" => attachments}} when is_list(attachments) -> attachments
+      _ -> []
+    end
+  end
+
+  def decode_attachments(_), do: []
+
   def avatar_color(id) when is_binary(id) do
     colors = ["chat-av-purple", "chat-av-teal", "chat-av-blue", "chat-av-green", "chat-av-orange"]
     Enum.at(colors, rem(:erlang.phash2(id), length(colors)))

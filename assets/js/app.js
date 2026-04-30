@@ -182,24 +182,38 @@ let Hooks = {
       // Initialize Emoji Picker
       const emojiBtn = document.getElementById("emoji-picker-btn");
       if (emojiBtn) {
-        const picker = createPicker({
-          rootElement: document.getElementById("emoji-picker-container"),
-          theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"
-        });
-
-        picker.addEventListener('emoji:select', selection => {
-          this.el.value += selection.emoji;
-          this.el.dispatchEvent(new Event("input", { bubbles: true }));
-          document.getElementById("emoji-picker-container").classList.add("hidden");
-        });
-
+        let picker = null;
         emojiBtn.addEventListener("click", () => {
           const container = document.getElementById("emoji-picker-container");
           container.classList.toggle("hidden");
+          
+          // Lazy init for Brave browser compatibility (don't init while display:none)
+          if (!container.classList.contains("hidden") && !picker) {
+            picker = createPicker({
+              rootElement: container,
+              theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"
+            });
+            picker.addEventListener('emoji:select', selection => {
+              this.el.value += selection.emoji;
+              this.el.dispatchEvent(new Event("input", { bubbles: true }));
+              container.classList.add("hidden");
+            });
+          }
         });
       }
 
-      this.el.addEventListener("keydown", (e) => {
+      
+      // Handle image paste from clipboard
+      this.el.addEventListener("paste", e => {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let item of items) {
+          if (item.kind === 'file' && item.type.startsWith('image/')) {
+            const file = item.getAsFile();
+            this.upload("attachments", [file]);
+          }
+        }
+      });
+this.el.addEventListener("keydown", (e) => {
         // ... same shortcut logic ...
         // Enter to submit (Shift+Enter for newline)
         if (e.key === "Enter" && !e.shiftKey) {

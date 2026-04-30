@@ -139,10 +139,10 @@
     </aside>
     
 <!-- ── MAIN PANEL ─────────────────────────────────────────────────────── -->
-    <main class="flex-1 flex flex-col min-w-0 bg-white dark:bg-[#0E0E10] relative">
+    <main class="flex-1 flex flex-col min-w-0 bg-gradient-to-b from-white to-slate-50/50 dark:from-[#0E0E10] dark:to-[#111113] relative">
       <%= if @active_conversation do %>
         <!-- Main Header -->
-        <div class="h-[72px] px-6 flex items-center justify-between bg-white dark:bg-[#0E0E10] shrink-0 z-10">
+        <div class="h-[68px] px-5 flex items-center justify-between bg-white/80 dark:bg-[#0E0E10]/90 backdrop-blur-md border-b border-slate-100 dark:border-white/[0.06] shrink-0 z-10">
           <div class="flex items-center gap-3.5">
             <div class={[
               "size-[40px] rounded-full flex items-center justify-center shrink-0 text-white font-bold text-[15px]",
@@ -198,25 +198,25 @@
         
 <!-- Typing Indicator Animation -->
         <%= if @typing_users != [] do %>
-          <div class="px-6 py-2 flex items-center gap-2">
-            <div class="flex gap-1">
-              <span class="size-1.5 bg-[#8B5CF6] rounded-full animate-bounce [animation-delay:-0.3s]">
+          <div class="px-5 py-1.5 flex items-center gap-2">
+            <div class="flex items-center gap-1.5 bg-white dark:bg-[#1C1C1F] border border-slate-100 dark:border-white/[0.07] rounded-full px-3 py-1.5 shadow-sm">
+              <div class="flex gap-1 items-center">
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+                <span class="typing-dot"></span>
+              </div>
+              <span class="text-[11px] font-medium text-slate-500 dark:text-zinc-400 ml-1">
+                {Enum.map_join(@typing_users, ", ", & &1.name)} {if length(@typing_users) == 1,
+                  do: "is",
+                  else: "are"} typing
               </span>
-              <span class="size-1.5 bg-[#8B5CF6] rounded-full animate-bounce [animation-delay:-0.15s]">
-              </span>
-              <span class="size-1.5 bg-[#8B5CF6] rounded-full animate-bounce"></span>
             </div>
-            <span class="text-[11px] font-medium text-slate-500 dark:text-zinc-500">
-              {Enum.map_join(@typing_users, ", ", & &1.name)} {if length(@typing_users) == 1,
-                do: "is",
-                else: "are"} typing...
-            </span>
           </div>
         <% end %>
         
 <!-- Messages stream -->
         <div
-          class="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col pt-10 bg-slate-50/50 dark:bg-[#111113]"
+          class="flex-1 overflow-y-auto px-5 py-6 flex flex-col gap-1 scroll-smooth"
           id="chat-messages-wrap"
           phx-hook="ChatScroll"
         >
@@ -224,26 +224,29 @@
             <div class="flex justify-center mb-6">
               <button
                 phx-click="load_more_messages"
-                class="text-xs font-semibold px-4 py-1.5 rounded-full bg-slate-100 dark:bg-[#1E1E20] text-slate-600 dark:text-zinc-400 hover:text-slate-900 dark:hover:text-zinc-200 transition-colors"
+                class="text-[11px] font-semibold px-4 py-1.5 rounded-full bg-white dark:bg-[#1C1C1F] border border-slate-200 dark:border-white/[0.08] text-slate-500 dark:text-zinc-400 hover:text-violet-600 hover:border-violet-200 dark:hover:text-violet-400 transition-all shadow-sm"
               >
                 Load earlier messages
               </button>
             </div>
           <% end %>
 
-          <div id="chat-messages" phx-update="stream" class="flex flex-col gap-6 mt-auto">
+          <div id="chat-messages" phx-update="stream" class="flex flex-col gap-5 mt-auto pb-6">
             <div
               :for={{id, msg} <- @streams.messages}
               id={id}
               class={[
-                "flex max-w-[85%] sm:max-w-[75%] 2xl:max-w-[60%] group",
+                "flex items-end gap-2 max-w-[80%] sm:max-w-[70%] 2xl:max-w-[58%] group relative",
                 msg.sender_id == @current_user.id && "ml-auto flex-row-reverse"
               ]}
             >
               
 <!-- Other's Avatar -->
               <%= if msg.sender_id != @current_user.id do %>
-                <div class="size-8 rounded-full bg-slate-200 dark:bg-[#2C2C2E] text-slate-600 dark:text-zinc-300 flex items-center justify-center text-[10px] font-bold shrink-0 mt-auto mr-3 border border-white dark:border-transparent">
+                <div class={[
+                  "size-8 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                  avatar_color(msg.sender_id)
+                ]}>
                   {user_initials(msg.sender && msg.sender.full_name)}
                 </div>
               <% end %>
@@ -287,9 +290,60 @@
 <!-- Body -->
                     <%= cond do %>
                       <% msg.deleted_at -> %>
-                        <span class="italic text-[13px] opacity-70">Message deleted</span>
+                        <span class="italic text-[13px] opacity-70 flex items-center gap-1.5">
+                          <.icon name="hero-no-symbol" class="w-3.5 h-3.5" /> Message deleted
+                        </span>
+                      <% msg.type == "file" -> %>
+                        <% attachments = decode_attachments(msg.metadata) %>
+                        <%= if attachments != [] do %>
+                          <div class="flex flex-col gap-2">
+                            <% has_text =
+                              msg.body && String.trim(msg.body) != "" && msg.body != "File" %>
+                            <%= if has_text do %>
+                              <p class="text-[14px] leading-snug">{msg.body}</p>
+                            <% end %>
+                            <%= for att <- attachments do %>
+                              <%= if att["type"] && String.starts_with?(att["type"], "image/") do %>
+                                <a href={att["url"]} target="_blank" class="block">
+                                  <img
+                                    src={att["url"]}
+                                    alt={att["name"]}
+                                    class="max-w-[280px] max-h-[300px] w-auto h-auto rounded-xl object-cover cursor-zoom-in shadow-md"
+                                    loading="lazy"
+                                  />
+                                </a>
+                              <% else %>
+                                <a
+                                  href={att["url"]}
+                                  target="_blank"
+                                  class={[
+                                    "flex items-center gap-2.5 px-3 py-2.5 rounded-xl transition-colors no-underline",
+                                    msg.sender_id == @current_user.id &&
+                                      "bg-white/15 hover:bg-white/25 text-white",
+                                    msg.sender_id != @current_user.id &&
+                                      "bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-800 dark:text-zinc-200"
+                                  ]}
+                                >
+                                  <.icon
+                                    name="hero-document-text"
+                                    class="w-5 h-5 shrink-0 opacity-80"
+                                  />
+                                  <span class="text-[13px] font-medium truncate max-w-[180px]">
+                                    {att["name"]}
+                                  </span>
+                                  <.icon
+                                    name="hero-arrow-down-tray"
+                                    class="w-4 h-4 shrink-0 opacity-60"
+                                  />
+                                </a>
+                              <% end %>
+                            <% end %>
+                          </div>
+                        <% else %>
+                          <span>{msg.body}</span>
+                        <% end %>
                       <% true -> %>
-                        <span>{msg.body}</span>
+                        <span class="whitespace-pre-wrap break-words">{msg.body}</span>
                     <% end %>
                     
 <!-- Meta (Time & Ticks) -->
@@ -313,14 +367,14 @@
 <!-- Hover Actions -->
                   <%= if !msg.deleted_at do %>
                     <div class={[
-                      "absolute top-1/2 -translate-y-1/2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200",
-                      msg.sender_id == @current_user.id && "right-full mr-2",
-                      msg.sender_id != @current_user.id && "left-full ml-2"
+                      "absolute -top-4 flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white dark:bg-[#1C1C1F] border border-slate-100 dark:border-white/10 rounded-full px-1 py-0.5 shadow-lg z-10",
+                      msg.sender_id == @current_user.id && "right-0",
+                      msg.sender_id != @current_user.id && "left-0"
                     ]}>
                       <button
                         phx-click="toggle_reactions"
                         phx-value-message_id={msg.id}
-                        class="p-1.5 rounded-full bg-white dark:bg-[#161618] text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
+                        class="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
                         title="React"
                       >
                         <.icon name="hero-face-smile" class="w-4 h-4" />
@@ -328,7 +382,7 @@
                       <button
                         phx-click="set_reply_to"
                         phx-value-message_id={msg.id}
-                        class="p-1.5 rounded-full bg-white dark:bg-[#161618] text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
+                        class="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
                         title="Reply"
                       >
                         <.icon name="hero-arrow-uturn-left" class="w-4 h-4" />
@@ -336,7 +390,7 @@
                       <button
                         phx-click="open_forward_modal"
                         phx-value-message_id={msg.id}
-                        class="p-1.5 rounded-full bg-white dark:bg-[#161618] text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
+                        class="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
                         title="Forward"
                       >
                         <.icon name="hero-arrow-uturn-right" class="w-4 h-4" />
@@ -345,7 +399,7 @@
                         <button
                           phx-click="start_edit"
                           phx-value-message_id={msg.id}
-                          class="p-1.5 rounded-full bg-white dark:bg-[#161618] text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
+                          class="p-1 rounded-full text-slate-400 hover:text-slate-700 dark:text-zinc-400 dark:hover:text-white transition-colors"
                           title="Edit"
                         >
                           <.icon name="hero-pencil" class="w-4 h-4" />
@@ -369,7 +423,7 @@
         </div>
         
 <!-- Input Area Wrapper -->
-        <div class="px-6 pb-6 pt-2 bg-white dark:bg-[#0E0E10] relative">
+        <div class="px-4 pb-4 pt-2 bg-white/80 dark:bg-[#0E0E10]/90 backdrop-blur-md border-t border-slate-100 dark:border-white/[0.06] relative">
           
 <!-- @Mentions Autocomplete -->
           <%= if @mention_query && @mention_results != [] do %>
