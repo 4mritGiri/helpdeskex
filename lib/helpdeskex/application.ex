@@ -12,8 +12,8 @@ defmodule Helpdeskex.Application do
       Helpdeskex.Repo,
       {DNSCluster, query: Application.get_env(:helpdeskex, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Helpdeskex.PubSub},
-      # Start a worker by calling: Helpdeskex.Worker.start_link(arg)
-      # {Helpdeskex.Worker, arg},
+      # Chat presence tracking
+      Helpdeskex.Chat.Presence,
       # Start to serve requests, typically the last entry
       HelpdeskexWeb.Endpoint
     ]
