@@ -104,7 +104,14 @@ defmodule HelpdeskexWeb.Layouts do
           <div class="agent-name">{if @user, do: @user.full_name, else: "Agent"}</div>
           <div class="agent-role">System Admin</div>
         </div>
-        <div class="status-dot"></div>
+        <.link
+          href="/session"
+          method="delete"
+          class="ml-auto flex items-center justify-center text-slate-400 hover:text-red-500 transition-colors"
+          title="Logout"
+        >
+          <.icon name="hero-arrow-right-start-on-rectangle" class="w-5 h-5 flex-shrink-0" />
+        </.link>
       </div>
     </div>
     """
@@ -116,16 +123,28 @@ defmodule HelpdeskexWeb.Layouts do
 
   def sidebar_item(assigns) do
     ~H"""
-    <div
-      class={["nav-item", @current_view == @item.view && "active"]}
-      phx-click="switch_view"
-      phx-value-view={@item.view}
-    >
-      <.icon name={@item.icon} class="nav-icon" />
-      <span class="nav-label">{@item.label}</span>
-      <span :if={@badge} class="nav-badge">{@badge}</span>
-      <div class="sidebar-tooltip">{@item.label}</div>
-    </div>
+    <%= if Map.has_key?(@item, :path) do %>
+      <.link
+        navigate={@item.path}
+        class={["nav-item", @current_view == @item.view && "active"]}
+      >
+        <.icon name={@item.icon} class="nav-icon" />
+        <span class="nav-label">{@item.label}</span>
+        <span :if={@badge} class="nav-badge">{@badge}</span>
+        <div class="sidebar-tooltip">{@item.label}</div>
+      </.link>
+    <% else %>
+      <div
+        class={["nav-item", @current_view == @item.view && "active"]}
+        phx-click="switch_view"
+        phx-value-view={@item.view}
+      >
+        <.icon name={@item.icon} class="nav-icon" />
+        <span class="nav-label">{@item.label}</span>
+        <span :if={@badge} class="nav-badge">{@badge}</span>
+        <div class="sidebar-tooltip">{@item.label}</div>
+      </div>
+    <% end %>
     """
   end
 

@@ -10,7 +10,7 @@ defmodule HelpdeskexWeb.SidebarConfig do
         label: "Kanban board",
         icon: "hero-squares-2x2",
         view: "kanban",
-        # Publicly accessible for now
+        path: "/",
         permission: nil
       },
       %{
@@ -18,6 +18,7 @@ defmodule HelpdeskexWeb.SidebarConfig do
         label: "Team Chat",
         icon: "hero-chat-bubble-left-right",
         view: "chat",
+        path: "/chat",
         badge: nil,
         permission: nil
       },
@@ -30,24 +31,6 @@ defmodule HelpdeskexWeb.SidebarConfig do
         permission: nil
       },
       %{
-        section: "Channels"
-      },
-      %{
-        id: "chat_general",
-        label: "General",
-        icon: "hero-hashtag",
-        view: "chat",
-        permission: nil
-      },
-      %{
-        id: "chat_urgent",
-        label: "Urgent items",
-        icon: "hero-bolt",
-        view: "chat",
-        badge: "3",
-        permission: nil
-      },
-      %{
         section: "Manage"
       },
       %{
@@ -55,7 +38,6 @@ defmodule HelpdeskexWeb.SidebarConfig do
         label: "Reports",
         icon: "hero-chart-bar",
         view: "reports",
-        # Example permission
         permission: :admin
       },
       %{

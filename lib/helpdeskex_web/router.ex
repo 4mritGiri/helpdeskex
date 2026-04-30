@@ -40,6 +40,8 @@ defmodule HelpdeskexWeb.Router do
     pipe_through [:browser, :auth, :require_auth]
 
     live "/", DashboardLive
+    live "/chat", ChatLive
+    live "/chat/:conversation_id", ChatLive
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development

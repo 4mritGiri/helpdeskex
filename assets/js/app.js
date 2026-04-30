@@ -125,6 +125,34 @@ let Hooks = {
         }
       });
     }
+  },
+
+  ChatScroll: {
+    mounted() {
+      this.scrollToBottom();
+    },
+    updated() {
+      // Small delay to allow stream to update DOM
+      setTimeout(() => this.scrollToBottom(), 10);
+    },
+    scrollToBottom() {
+      if (this.el) {
+        this.el.scrollTop = this.el.scrollHeight;
+      }
+    }
+  },
+
+  ChatInput: {
+    mounted() {
+      this.el.addEventListener("keydown", (e) => {
+        if (e.key === "Enter" && !e.shiftKey) {
+          e.preventDefault();
+          this.el.closest("form").dispatchEvent(
+            new Event("submit", {bubbles: true, cancelable: true})
+          );
+        }
+      });
+    }
   }
 }
 

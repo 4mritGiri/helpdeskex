@@ -48,21 +48,18 @@ defmodule Helpdeskex.Chat do
 
   @doc "List all conversations for a user, ordered by last message time."
   def list_conversations(user_id) do
+    last_msg_subquery =
+      from m in Message,
+        group_by: m.conversation_id,
+        select: %{conversation_id: m.conversation_id, last_msg_at: max(m.inserted_at)}
+
     Repo.all(
       from c in Conversation,
         join: p in Participant,
         on: p.conversation_id == c.id and p.user_id == ^user_id,
-        left_join: last_msg in Message,
-        on:
-          last_msg.conversation_id == c.id and
-            last_msg.inserted_at ==
-              subquery(
-                from m in Message,
-                  where: m.conversation_id == parent_as(:conv).id,
-                  select: max(m.inserted_at)
-              ),
-        as: :conv,
-        order_by: [desc: coalesce(last_msg.inserted_at, c.inserted_at)],
+        left_join: last_msg in subquery(last_msg_subquery),
+        on: last_msg.conversation_id == c.id,
+        order_by: [desc: coalesce(last_msg.last_msg_at, c.inserted_at)],
         preload: [
           participants: [user: []],
           messages: ^from(m in Message, order_by: [desc: m.inserted_at], limit: 1, preload: [:sender])
@@ -345,6 +342,15 @@ defmodule Helpdeskex.Chat do
   # ──────────────────────────────────────────────────────────────────────────
   # Users / tenant-scoped
   # ──────────────────────────────────────────────────────────────────────────
+
+  @doc "Gets the last time the user read any conversation"
+  def get_user_last_seen(user_id) do
+    query = from p in Participant,
+      where: p.user_id == ^user_id,
+      select: max(p.last_read_at)
+    
+    Repo.one(query)
+  end
 
   @doc "List all users in the same tenant (for starting new DMs)."
   def list_users_for_chat(tenant_id, current_user_id) do

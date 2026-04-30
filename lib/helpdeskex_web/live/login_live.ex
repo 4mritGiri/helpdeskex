@@ -1,5 +1,6 @@
 defmodule HelpdeskexWeb.LoginLive do
   use HelpdeskexWeb, :live_view
+  on_mount {HelpdeskexWeb.Auth.LiveHooks, :redirect_if_user_is_authenticated}
 
   @dev_routes Application.compile_env(:helpdeskex, :dev_routes, false)
 
