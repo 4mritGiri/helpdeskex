@@ -346,35 +346,6 @@
                         <span class="whitespace-pre-wrap break-words">{msg.body}</span>
                     <% end %>
                     
-<!-- Reactions Display -->
-                    <%= if Map.get(msg, :reactions) && msg.reactions != [] do %>
-                      <div class={[
-                        "flex flex-wrap gap-1 mt-1",
-                        msg.sender_id == @current_user.id && "justify-end"
-                      ]}>
-                        <%= for {emoji, reactions} <- Enum.group_by(msg.reactions, & &1.emoji) do %>
-                          <% count = length(reactions)
-                          reacted_by_me = Enum.any?(reactions, &(&1.user_id == @current_user.id)) %>
-                          <button
-                            phx-click="toggle_reaction"
-                            phx-value-message_id={msg.id}
-                            phx-value-emoji={emoji}
-                            class={[
-                              "flex items-center justify-center w-6 h-6 rounded-full text-[13px] bg-white dark:bg-[#262629] border border-slate-100 dark:border-white/10 shadow-md transition-all hover:scale-110 active:scale-95 hover:z-40",
-                              reacted_by_me &&
-                                "bg-violet-100 border-violet-200 text-violet-700 dark:bg-violet-900/30 dark:border-violet-800 dark:text-violet-300",
-                              !reacted_by_me &&
-                                "bg-slate-50 border-slate-200 text-slate-600 dark:bg-[#1C1C1F] dark:border-white/10 dark:text-zinc-400 hover:border-slate-300"
-                            ]}
-                          >
-                            <span>{emoji}</span>
-                            <%= if count > 1 do %>
-                              <span class="font-bold">{count}</span>
-                            <% end %>
-                          </button>
-                        <% end %>
-                      </div>
-                    <% end %>
                     <!-- Meta (Time & Ticks) -->
                     <div class={[
                       "flex items-center justify-end gap-1 mt-1 -mb-1",
@@ -393,10 +364,42 @@
                     </div>
                   </div>
                   
+                  <!-- Reactions Display (Instagram Style) -->
+                  <%= if Map.get(msg, :reactions) && msg.reactions != [] do %>
+                    <% unique_reactions = msg.reactions |> Enum.map(& &1.emoji) |> Enum.uniq()
+                       reacted_by_me_any = Enum.any?(msg.reactions, & &1.user_id == @current_user.id) %>
+                    <div 
+                      class={[
+                        "absolute -bottom-3 flex items-center gap-0.5 px-1.5 py-0.5 rounded-full z-30 shadow-md border cursor-pointer select-none transition-transform hover:scale-110 active:scale-95 group/pill",
+                        msg.sender_id == @current_user.id && "right-3",
+                        msg.sender_id != @current_user.id && "left-3",
+                        reacted_by_me_any && "bg-violet-50 border-violet-200 dark:bg-[#2D2D3D] dark:border-violet-800",
+                        !reacted_by_me_any && "bg-white border-slate-100 dark:bg-[#262629] dark:border-white/10"
+                      ]}
+                      phx-click="toggle_reaction_picker"
+                      phx-value-message_id={msg.id}
+                    >
+                      <div class="flex -space-x-1">
+                        <%= for emoji <- Enum.take(unique_reactions, 3) do %>
+                          <span class="text-[13px] filter drop-shadow-sm group-hover/pill:scale-110 transition-transform">{emoji}</span>
+                        <% end %>
+                      </div>
+                      <%= if length(msg.reactions) > 1 do %>
+                        <span class={[
+                          "text-[10px] font-bold ml-1 pr-0.5",
+                          reacted_by_me_any && "text-violet-600 dark:text-violet-300",
+                          !reacted_by_me_any && "text-slate-500 dark:text-zinc-400"
+                        ]}>
+                          {length(msg.reactions)}
+                        </span>
+                      <% end %>
+                    </div>
+                  <% end %>
+
 <!-- Hover Actions -->
                   <%= if !msg.deleted_at do %>
                     <div class={[
-                      "absolute -bottom-4 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-white dark:bg-[#1C1C1F] border border-slate-100 dark:border-white/10 rounded-full px-1.5 py-1 shadow-xl z-10 hover:scale-105",
+                      "absolute -bottom-10 flex items-center gap-1 opacity-0 group-hover:flex group-hover:opacity-100 transition-all duration-200 bg-white dark:bg-[#1C1C1F] border border-slate-100 dark:border-white/10 rounded-full px-1.5 py-1 shadow-xl z-10 hover:scale-105",
                       msg.sender_id == @current_user.id && "right-0",
                       msg.sender_id != @current_user.id && "left-0"
                     ]}>
