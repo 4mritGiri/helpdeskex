@@ -121,21 +121,23 @@ defmodule Helpdeskex.Chat do
         |> Participant.changeset(%{conversation_id: conv.id, user_id: user_id, role: "admin"})
         |> Repo.insert()
 
-      {:ok, _} =
-        %Participant{}
-        |> Participant.changeset(%{
-          conversation_id: conv.id,
-          user_id: other_user_id,
-          role: "member"
-        })
-        |> Repo.insert()
+      if user_id != other_user_id do
+        {:ok, _} =
+          %Participant{}
+          |> Participant.changeset(%{
+            conversation_id: conv.id,
+            user_id: other_user_id,
+            role: "member"
+          })
+          |> Repo.insert()
 
-      conv = Repo.preload(conv, participants: [user: []])
-
-      # Notify the other user
-      broadcast_user(other_user_id, {:new_conversation, conv})
-
-      conv
+        conv = Repo.preload(conv, participants: [user: []])
+        # Notify the other user
+        broadcast_user(other_user_id, {:new_conversation, conv})
+        conv
+      else
+        Repo.preload(conv, participants: [user: []])
+      end
     end)
   end
 
@@ -376,6 +378,33 @@ defmodule Helpdeskex.Chat do
   def create_attachment(attrs) do
     %Attachment{}
     |> Attachment.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  alias Helpdeskex.Chat.Todo
+  alias Helpdeskex.Chat.Note
+
+  @doc "List todos for a conversation."
+  def list_todos(conversation_id) do
+    Repo.all(from t in Todo, where: t.conversation_id == ^conversation_id, order_by: [desc: t.inserted_at])
+  end
+
+  @doc "List notes for a conversation."
+  def list_notes(conversation_id) do
+    Repo.all(from n in Note, where: n.conversation_id == ^conversation_id, order_by: [desc: n.inserted_at])
+  end
+
+  @doc "Create a todo."
+  def create_todo(attrs) do
+    %Todo{}
+    |> Todo.changeset(attrs)
+    |> Repo.insert()
+  end
+
+  @doc "Create a note."
+  def create_note(attrs) do
+    %Note{}
+    |> Note.changeset(attrs)
     |> Repo.insert()
   end
 

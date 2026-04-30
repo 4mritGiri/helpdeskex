@@ -25,7 +25,10 @@ import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/helpdeskex"
 import topbar from "../vendor/topbar"
 
+import { createPicker } from "../vendor/picmo"
+
 let Hooks = {
+  // ... existing hooks ...
   Kanban: {
     mounted() {
       const Sortable = window.Sortable
@@ -144,12 +147,94 @@ let Hooks = {
 
   ChatInput: {
     mounted() {
+      this.typingTimer = null;
+
+      // Handle paste (Images)
+      this.el.addEventListener("paste", (e) => {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let index in items) {
+          const item = items[index];
+          if (item.kind === 'file' && item.type.includes('image')) {
+            const blob = item.getAsFile();
+            const fileInput = document.getElementById("chat-file-input");
+            if (fileInput) {
+              const dataTransfer = new DataTransfer();
+              dataTransfer.items.add(blob);
+              fileInput.files = dataTransfer.files;
+              fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+            }
+          }
+        }
+      });
+
+      // Handle typing indicator
+      this.el.addEventListener("input", e => {
+        if (!this.typingTimer) {
+          this.pushEvent("typing_start", {});
+        }
+        clearTimeout(this.typingTimer);
+        this.typingTimer = setTimeout(() => {
+          this.pushEvent("typing_stop", {});
+          this.typingTimer = null;
+        }, 3000);
+      });
+
+      // Initialize Emoji Picker
+      const emojiBtn = document.getElementById("emoji-picker-btn");
+      if (emojiBtn) {
+        const picker = createPicker({
+          rootElement: document.getElementById("emoji-picker-container"),
+          theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light"
+        });
+
+        picker.on('emoji', selection => {
+          this.el.value += selection.emoji;
+          this.el.dispatchEvent(new Event("input", { bubbles: true }));
+          document.getElementById("emoji-picker-container").classList.add("hidden");
+        });
+
+        emojiBtn.addEventListener("click", () => {
+          const container = document.getElementById("emoji-picker-container");
+          container.classList.toggle("hidden");
+        });
+      }
+
       this.el.addEventListener("keydown", (e) => {
+        // ... same shortcut logic ...
+        // Enter to submit (Shift+Enter for newline)
         if (e.key === "Enter" && !e.shiftKey) {
+          const mentionResults = document.getElementById("mention-results");
+          if (mentionResults && mentionResults.children.length > 0) {
+            // If mentions are visible, enter selects the first one
+            e.preventDefault();
+            const firstMention = mentionResults.querySelector("button");
+            if (firstMention) firstMention.click();
+            return;
+          }
+          
           e.preventDefault();
           this.el.closest("form").dispatchEvent(
             new Event("submit", {bubbles: true, cancelable: true})
           );
+        }
+
+        // Up Arrow to edit last message
+        if (e.key === "ArrowUp" && this.el.value === "") {
+          e.preventDefault();
+          this.pushEvent("edit_last_message", {});
+        }
+
+        // Escape to cancel edit/reply
+        if (e.key === "Escape") {
+          this.pushEvent("cancel_edit", {});
+          this.pushEvent("cancel_reply", {});
+        }
+        
+        // Command+K or Ctrl+K for search
+        if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+          e.preventDefault();
+          const searchInput = document.getElementById("sidebar-search-input");
+          if (searchInput) searchInput.focus();
         }
       });
     }

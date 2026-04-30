@@ -35,6 +35,7 @@
             <.icon name="hero-magnifying-glass" class="w-4 h-4"/>
           </div>
           <input
+            id="sidebar-search-input"
             type="text"
             placeholder="Search conversations..."
             class="w-full bg-white dark:bg-[#1E1E20] border border-slate-200 dark:border-white/5 rounded-full py-2 pl-10 pr-4 text-[13px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/50 dark:focus:border-[#38383B] transition-all shadow-none"
@@ -141,13 +142,29 @@
             <button class="hover:text-slate-600 dark:hover:text-zinc-300 transition-colors">
               <.icon name="hero-magnifying-glass" class="w-5 h-5"/>
             </button>
+            <button phx-click="toggle_right_sidebar" class={["transition-colors", @show_right_sidebar && "text-[#8B5CF6]"]}>
+              <.icon name="hero-document-text" class="w-5 h-5"/>
+            </button>
             <button class="hover:text-slate-600 dark:hover:text-zinc-300 transition-colors">
               <.icon name="hero-ellipsis-vertical" class="w-5 h-5"/>
             </button>
           </div>
-        </div>
+          
+          <!-- Typing Indicator Animation -->
+          <%= if @typing_users != [] do %>
+            <div class="px-6 py-2 flex items-center gap-2">
+              <div class="flex gap-1">
+                <span class="size-1.5 bg-[#8B5CF6] rounded-full animate-bounce [animation-delay:-0.3s]"></span>
+                <span class="size-1.5 bg-[#8B5CF6] rounded-full animate-bounce [animation-delay:-0.15s]"></span>
+                <span class="size-1.5 bg-[#8B5CF6] rounded-full animate-bounce"></span>
+              </div>
+              <span class="text-[11px] font-medium text-slate-500 dark:text-zinc-500">
+                {Enum.map_join(@typing_users, ", ", & &1.name)} {if length(@typing_users) == 1, do: "is", else: "are"} typing...
+              </span>
+            </div>
+          <% end %>
 
-        <!-- Messages stream -->
+          <!-- Messages stream -->
         <div class="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col pt-10" id="chat-messages-wrap" phx-hook="ChatScroll">
           
           <%= if @has_more_messages do %>
@@ -262,7 +279,37 @@
         </div>
 
         <!-- Input Area Wrapper -->
-        <div class="px-6 pb-6 pt-2 bg-white dark:bg-[#0E0E10]">
+        <div class="px-6 pb-6 pt-2 bg-white dark:bg-[#0E0E10] relative">
+          
+          <!-- @Mentions Autocomplete -->
+          <%= if @mention_query && @mention_results != [] do %>
+            <div id="mention-results" class="absolute bottom-full left-10 mb-4 bg-white dark:bg-[#1E1E20] border border-slate-200 dark:border-white/10 rounded-2xl shadow-xl overflow-hidden w-64 z-50">
+              <%= for {user, idx} <- Enum.with_index(@mention_results) do %>
+                <button 
+                  type="button"
+                  phx-click="select_mention" 
+                  phx-value-user_id={user.id}
+                  class={[
+                    "w-full flex items-center gap-2.5 p-2.5 text-left transition-colors",
+                    @mention_index == idx && "bg-slate-50 dark:bg-white/5",
+                    "hover:bg-slate-50 dark:hover:bg-white/5"
+                  ]}
+                >
+                  <div class="size-7 rounded-full bg-[#8B5CF6] text-white flex items-center justify-center text-[10px] font-bold">
+                    {user_initials(user.full_name)}
+                  </div>
+                  <div class="flex-1 truncate">
+                    <p class="text-xs font-semibold text-slate-900 dark:text-white truncate">{user.full_name}</p>
+                    <p class="text-[10px] text-slate-500 truncate">{user.email}</p>
+                  </div>
+                </button>
+              <% end %>
+            </div>
+          <% end %>
+
+          <!-- Emoji Picker Container -->
+          <div id="emoji-picker-container" class="hidden absolute bottom-full right-10 mb-4 z-50 shadow-2xl border border-slate-200 dark:border-white/10 rounded-2xl overflow-hidden">
+          </div>
           
           <!-- Uploads Preview -->
           <%= if @uploads.attachments.entries != [] do %>
@@ -340,6 +387,13 @@
               </label>
             </div>
             
+            <!-- Emoji Button -->
+            <div class="px-1">
+              <button id="emoji-picker-btn" type="button" class="flex items-center justify-center size-9 rounded-full bg-transparent text-slate-400 dark:text-zinc-500 hover:text-slate-700 dark:hover:text-zinc-300 hover:bg-slate-200/50 dark:hover:bg-white/5 transition-colors">
+                <.icon name="hero-face-smile" class="w-[22px] h-[22px]"/>
+              </button>
+            </div>
+
             <!-- Vertical thin separator line -->
             <div class="h-6 w-px bg-slate-200 dark:bg-white/10 shrink-0"></div>
 
@@ -374,6 +428,83 @@
         </div>
       <% end %>
     </main>
+
+    <!-- ── RIGHT SIDEBAR (PRODUCTIVITY) ───────────────────────────────────── -->
+    <%= if @show_right_sidebar && @active_conversation do %>
+      <aside class="w-[300px] border-l border-slate-200 dark:border-[#1E1E20] bg-slate-50 dark:bg-[#161618] flex flex-col shrink-0">
+        <div class="h-[72px] px-5 flex items-center justify-between border-b border-slate-200 dark:border-white/5">
+          <h3 class="text-[15px] font-bold text-slate-900 dark:text-white">Productivity</h3>
+          <button phx-click="toggle_right_sidebar" class="text-slate-400 hover:text-slate-600">
+            <.icon name="hero-x-mark" class="w-5 h-5"/>
+          </button>
+        </div>
+
+        <!-- Tabs -->
+        <div class="flex p-2 gap-1">
+          <button 
+            phx-click="set_active_tab" 
+            phx-value-tab="todos"
+            class={[
+              "flex-1 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all",
+              @active_tab == "todos" && "bg-white dark:bg-[#1E1E20] text-[#8B5CF6] shadow-sm",
+              @active_tab != "todos" && "text-slate-500 hover:text-slate-700"
+            ]}
+          >
+            TODOs
+          </button>
+          <button 
+            phx-click="set_active_tab" 
+            phx-value-tab="notes"
+            class={[
+              "flex-1 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-lg transition-all",
+              @active_tab == "notes" && "bg-white dark:bg-[#1E1E20] text-[#8B5CF6] shadow-sm",
+              @active_tab != "notes" && "text-slate-500 hover:text-slate-700"
+            ]}
+          >
+            Notes
+          </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4">
+          <%= if @active_tab == "todos" do %>
+            <div id="todos-list" phx-update="stream" class="space-y-3">
+              <div :for={{id, todo} <- @streams.todos} id={id} class="flex items-start gap-3 p-3 bg-white dark:bg-[#1E1E20] rounded-xl border border-slate-100 dark:border-white/5 group">
+                <button class={["size-5 mt-0.5 rounded border-2 shrink-0 flex items-center justify-center transition-colors", todo.is_completed && "bg-green-500 border-green-500 text-white", !todo.is_completed && "border-slate-300 dark:border-zinc-700"]}>
+                   <%= if todo.is_completed do %><.icon name="hero-check" class="w-3.5 h-3.5 stroke-[3]"/><% end %>
+                </button>
+                <span class={["text-[13px] font-medium leading-tight", todo.is_completed && "text-slate-400 line-through", !todo.is_completed && "text-slate-700 dark:text-zinc-200"]}>
+                  {todo.title}
+                </span>
+              </div>
+              <div class="hidden only:block text-center py-10">
+                <p class="text-xs text-slate-400">No tasks yet.</p>
+              </div>
+            </div>
+          <% else %>
+             <div id="notes-list" phx-update="stream" class="space-y-4">
+               <div :for={{id, note} <- @streams.notes} id={id} class="p-3 bg-white dark:bg-[#1E1E20] rounded-xl border border-slate-100 dark:border-white/5">
+                 <p class="text-[13px] text-slate-700 dark:text-zinc-200 whitespace-pre-wrap">{note.body}</p>
+                 <span class="text-[10px] text-slate-400 mt-2 block">{format_message_time(note)}</span>
+               </div>
+               <div class="hidden only:block text-center py-10">
+                <p class="text-xs text-slate-400">No notes yet.</p>
+              </div>
+             </div>
+          <% end %>
+        </div>
+
+        <!-- Productivity Footer Action -->
+        <div class="p-4 border-t border-slate-200 dark:border-white/5">
+           <button 
+             phx-click={if @active_tab == "todos", do: "add_todo", else: "add_note"}
+             class="w-full py-2.5 rounded-xl border-2 border-dashed border-slate-300 dark:border-zinc-800 text-slate-500 dark:text-zinc-500 text-xs font-bold hover:border-[#8B5CF6] hover:text-[#8B5CF6] transition-all flex items-center justify-center gap-2"
+           >
+             <.icon name="hero-plus" class="w-4 h-4"/>
+             Add {if @active_tab == "todos", do: "Task", else: "Note"}
+           </button>
+        </div>
+      </aside>
+    <% end %>
   </div>
 
   <!-- ── MODALS ───────────────────────────────────────────────────────────── -->

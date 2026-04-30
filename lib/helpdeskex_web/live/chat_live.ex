@@ -56,6 +56,11 @@ defmodule HelpdeskexWeb.ChatLive do
       if active_conv && is_nil(params["conversation_id"]) do
         Chat.subscribe_conversation(active_conv.id)
       end
+      
+      # Subscribe to typing events for the active conversation
+      if params["conversation_id"] do
+        Phoenix.PubSub.subscribe(Helpdeskex.PubSub, "chat_typing:#{params["conversation_id"]}")
+      end
     end
 
     # Fetch initial presence
@@ -91,9 +96,16 @@ defmodule HelpdeskexWeb.ChatLive do
      |> assign(:current_scope, nil)
      |> assign(:theme, "light")
      |> assign(:sidebar_collapsed, false)
+     |> assign(:show_right_sidebar, false)
+     |> assign(:active_tab, "todos")
+     |> assign(:mention_query, nil)
+     |> assign(:mention_results, [])
+     |> assign(:mention_index, 0)
      |> assign(:stats, %{open: 0, in_progress: 0, resolved: 0})
      |> allow_upload(:attachments, accept: ~w(.jpg .jpeg .png .pdf .zip .csv .doc .docx), max_entries: 5)
-     |> stream(:messages, messages)}
+     |> stream(:messages, messages)
+     |> stream(:todos, [])
+     |> stream(:notes, [])}
   end
 
   @impl true
@@ -169,13 +181,115 @@ defmodule HelpdeskexWeb.ChatLive do
     {:noreply, socket |> assign(:reply_to, nil) |> assign(:message_input, "")}
   end
 
-  @impl true
-  def handle_event("validate_upload", %{"body" => body}, socket) do
-    {:noreply, assign(socket, :message_input, body)}
+  def handle_event("edit_last_message", _params, socket) do
+    user = socket.assigns.current_user
+    conv = socket.assigns.active_conversation
+    
+    # Simple logic to find last message by this user
+    last_msg = 
+      Chat.list_messages(conv.id)
+      |> Enum.filter(&(&1.sender_id == user.id))
+      |> List.first()
+      
+    if last_msg do
+      {:noreply, assign(socket, :editing_message, last_msg)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_event("typing_start", _params, socket) do
+    user = socket.assigns.current_user
+    conv = socket.assigns.active_conversation
+    if conv do
+      Phoenix.PubSub.broadcast(Helpdeskex.PubSub, "chat_typing:#{conv.id}", {:user_typing, user.id, user.full_name})
+    end
+    {:noreply, socket}
+  end
+
+  def handle_event("typing_stop", _params, socket) do
+    user = socket.assigns.current_user
+    conv = socket.assigns.active_conversation
+    if conv do
+      Phoenix.PubSub.broadcast(Helpdeskex.PubSub, "chat_typing:#{conv.id}", {:user_stopped_typing, user.id})
+    end
+    {:noreply, socket}
+  end
+
+  def handle_event("validate_upload", %{"body" => body} = params, socket) do
+    # Only update message_input if it's the main form
+    socket = if params["_target"] == ["body"] or params["_target"] == ["attachments"] do
+      handle_mentions(body, socket)
+      |> assign(:message_input, body)
+    else
+      socket
+    end
+    {:noreply, socket}
   end
 
   def handle_event("validate_upload", _params, socket) do
     {:noreply, socket}
+  end
+
+  def handle_event("toggle_right_sidebar", _params, socket) do
+    new_state = !socket.assigns.show_right_sidebar
+    socket = if new_state, do: load_productivity_data(socket), else: socket
+    {:noreply, assign(socket, :show_right_sidebar, new_state)}
+  end
+
+  def handle_event("set_active_tab", %{"tab" => tab}, socket) do
+    {:noreply, assign(socket, :active_tab, tab)}
+  end
+
+  def handle_event("select_mention", %{"user_id" => user_id}, socket) do
+    user = Enum.find(socket.assigns.tenant_users, &(&1.id == user_id))
+    current_body = socket.assigns.message_input
+    
+    # Replace the @query with the full name
+    new_body = String.replace(current_body, ~r/@[^\s]*$/, "@#{user.full_name} ")
+    
+    {:noreply, 
+     socket 
+     |> assign(:message_input, new_body)
+     |> assign(:mention_query, nil)
+     |> assign(:mention_results, [])}
+  end
+
+  defp handle_mentions(body, socket) do
+    case Regex.run(~r/@[^\s]*$/, body) do
+      [mention] ->
+        query = String.slice(mention, 1..-1)
+        results = 
+          socket.assigns.tenant_users
+          |> Enum.filter(fn u -> 
+            String.contains?(String.downcase(u.full_name), String.downcase(query)) 
+          end)
+          |> Enum.take(5)
+          
+        socket 
+        |> assign(:mention_query, query)
+        |> assign(:mention_results, results)
+        |> assign(:mention_index, 0)
+        
+      _ ->
+        socket 
+        |> assign(:mention_query, nil)
+        |> assign(:mention_results, [])
+    end
+  end
+
+  defp load_productivity_data(socket) do
+    conv = socket.assigns.active_conversation
+    if conv do
+      todos = Chat.list_todos(conv.id)
+      notes = Chat.list_notes(conv.id)
+      
+      socket
+      |> stream(:todos, todos, reset: true)
+      |> stream(:notes, notes, reset: true)
+    else
+      socket
+    end
   end
 
   @impl true
@@ -185,6 +299,73 @@ defmodule HelpdeskexWeb.ChatLive do
 
   # Removed duplicate message_input_change directly inside the form
 
+
+  def handle_event("cancel_edit", _params, socket) do
+    {:noreply, assign(socket, :editing_message, nil)}
+  end
+
+  def handle_event("cancel_reply", _params, socket) do
+    {:noreply, assign(socket, :reply_to, nil)}
+  end
+
+  def handle_event("toggle_todo_status", %{"id" => id}, socket) do
+    todo = Helpdeskex.Repo.get!(Chat.Todo, id)
+    case Chat.update_todo(todo, %{is_completed: !todo.is_completed}) do
+      {:ok, todo} ->
+        {:noreply, stream_insert(socket, :todos, todo)}
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("open_personal_space", _params, socket) do
+    user = socket.assigns.current_user
+    case Chat.get_or_create_direct_conversation(user.id, user.id, user.tenant_id) do
+      {:ok, conv} ->
+        {:noreply, push_patch(socket, to: "/chat/#{conv.id}")}
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("add_todo", _params, socket) do
+    user = socket.assigns.current_user
+    conv = socket.assigns.active_conversation
+    
+    # In a real app we'd show an input first, here we'll create a default one to show it works
+    attrs = %{
+      "conversation_id" => conv.id,
+      "created_by_id" => user.id,
+      "title" => "New Task",
+      "is_completed" => false
+    }
+    
+    case Chat.create_todo(attrs) do
+      {:ok, todo} ->
+        {:noreply, stream_insert(socket, :todos, todo, at: 0)}
+      _ ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("add_note", _params, socket) do
+    user = socket.assigns.current_user
+    conv = socket.assigns.active_conversation
+    
+    attrs = %{
+      "conversation_id" => conv.id,
+      "created_by_id" => user.id,
+      "body" => "Shared note started...",
+      "attachments" => %{}
+    }
+    
+    case Chat.create_note(attrs) do
+      {:ok, note} ->
+        {:noreply, stream_insert(socket, :notes, note, at: 0)}
+      _ ->
+        {:noreply, socket}
+    end
+  end
 
   @impl true
   def handle_event("set_reply_to", %{"message_id" => msg_id}, socket) do
@@ -380,6 +561,22 @@ defmodule HelpdeskexWeb.ChatLive do
   end
 
   # ── PubSub handlers ───────────────────────────────────────────────────────
+
+  @impl true
+  def handle_info({:user_typing, user_id, full_name}, socket) do
+    if user_id != socket.assigns.current_user.id do
+      typing = [%{id: user_id, name: full_name} | socket.assigns.typing_users] |> Enum.uniq_by(& &1.id)
+      {:noreply, assign(socket, :typing_users, typing)}
+    else
+      {:noreply, socket}
+    end
+  end
+
+  @impl true
+  def handle_info({:user_stopped_typing, user_id}, socket) do
+    typing = Enum.reject(socket.assigns.typing_users, &(&1.id == user_id))
+    {:noreply, assign(socket, :typing_users, typing)}
+  end
 
   @impl true
   def handle_info({:new_message, message}, socket) do
