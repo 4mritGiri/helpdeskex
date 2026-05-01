@@ -16,6 +16,7 @@ defmodule Helpdeskex.Chat do
   alias Helpdeskex.Chat.Note
   alias Helpdeskex.Chat.Attachment
   alias Helpdeskex.Chat.MessageReaction
+  alias Helpdeskex.Chat.MessageStatus
   alias Helpdeskex.Accounts.User
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -204,7 +205,7 @@ defmodule Helpdeskex.Chat do
         where: m.conversation_id == ^conversation_id and is_nil(m.deleted_at),
         order_by: [desc: m.inserted_at],
         limit: ^limit,
-        preload: [:sender, :attachments, :reactions, reply_to: [:sender]]
+        preload: [:sender, :attachments, :reactions, :statuses, reply_to: [:sender]]
 
     query =
       if before_id do
@@ -233,7 +234,15 @@ defmodule Helpdeskex.Chat do
 
     case result do
       {:ok, message} ->
-        message = Repo.preload(message, [:sender, :attachments, :reactions, reply_to: [:sender]])
+        message =
+          Repo.preload(message, [
+            :sender,
+            :attachments,
+            :reactions,
+            :statuses,
+            reply_to: [:sender]
+          ])
+
         broadcast_conversation(conversation_id, {:new_message, message})
 
         participants =
@@ -281,7 +290,7 @@ defmodule Helpdeskex.Chat do
       |> Repo.update()
       |> case do
         {:ok, updated} ->
-          updated = Repo.preload(updated, [:sender, :attachments, reply_to: [:sender]])
+          updated = Repo.preload(updated, [:sender, :attachments, :statuses, reply_to: [:sender]])
           broadcast_conversation(message.conversation_id, {:message_updated, updated})
           {:ok, updated}
 
@@ -296,7 +305,7 @@ defmodule Helpdeskex.Chat do
   @doc "Get a single message with preloads."
   def get_message!(id) do
     Repo.get!(Message, id)
-    |> Repo.preload([:sender, :attachments, :reactions, reply_to: [:sender]])
+    |> Repo.preload([:sender, :attachments, :reactions, :statuses, reply_to: [:sender]])
   end
 
   # ──────────────────────────────────────────────────────────────────────────
@@ -310,6 +319,15 @@ defmodule Helpdeskex.Chat do
   def mark_as_read(conversation_id, user_id) do
     now = DateTime.utc_now() |> DateTime.truncate(:second)
 
+    # Get participant's previous last_read_at
+    participant =
+      Repo.one(
+        from p in Participant,
+          where: p.conversation_id == ^conversation_id and p.user_id == ^user_id
+      )
+
+    last_read_at = participant.last_read_at
+
     # Update participant's last_read_at
     Repo.update_all(
       from(p in Participant,
@@ -318,6 +336,25 @@ defmodule Helpdeskex.Chat do
       set: [last_read_at: now]
     )
 
+    # Upsert "read" status for all messages in this conversation not sent by this user
+    # and inserted after the previous last_read_at.
+    query =
+      from m in Message,
+        where: m.conversation_id == ^conversation_id and m.sender_id != ^user_id
+
+    query =
+      if last_read_at do
+        from m in query, where: m.inserted_at > ^last_read_at
+      else
+        query
+      end
+
+    message_ids = Repo.all(from m in query, select: m.id)
+
+    for msg_id <- message_ids do
+      upsert_message_status(msg_id, user_id, "read")
+    end
+
     # Broadcast read receipt to conversation members
     broadcast_conversation(
       conversation_id,
@@ -325,6 +362,74 @@ defmodule Helpdeskex.Chat do
     )
 
     :ok
+  end
+
+  @doc """
+  Upserts a message status (delivered or read) for a specific user.
+  """
+  def upsert_message_status(message_id, user_id, status) do
+    # "read" overrides "delivered"
+    existing =
+      Repo.one(
+        from s in MessageStatus,
+          where: s.message_id == ^message_id and s.user_id == ^user_id
+      )
+
+    case existing do
+      nil ->
+        %MessageStatus{}
+        |> MessageStatus.changeset(%{message_id: message_id, user_id: user_id, status: status})
+        |> Repo.insert()
+
+      %{status: "read"} ->
+        {:ok, existing}
+
+      %{status: "delivered"} when status == "read" ->
+        existing
+        |> MessageStatus.changeset(%{status: "read"})
+        |> Repo.update()
+
+      _ ->
+        {:ok, existing}
+    end
+    |> case do
+      {:ok, status_record} ->
+        message = get_message!(message_id)
+
+        broadcast_conversation(
+          message.conversation_id,
+          {:message_status_updated, %{message_id: message_id, user_id: user_id, status: status}}
+        )
+
+        {:ok, status_record}
+
+      error ->
+        error
+    end
+  end
+
+  @doc """
+  Returns the aggregated status of a message.
+  Returns "seen", "delivered", or "sent".
+  """
+  def get_message_aggregated_status(message) do
+    # For direct chats:
+    # - "seen" if the other participant has a "read" status.
+    # - "delivered" if the other participant has a "delivered" status.
+    # - "sent" otherwise.
+    # For group chats:
+    # - "seen" if ALL other participants have "read" status.
+    # - "delivered" if ALL other participants have "delivered" status.
+    # (Simplified for now: "seen" if at least one other has seen it,
+    # "delivered" if at least one other has received it)
+
+    statuses = message.statuses
+
+    cond do
+      Enum.any?(statuses, &(&1.status == "read")) -> "seen"
+      Enum.any?(statuses, &(&1.status == "delivered")) -> "delivered"
+      true -> "sent"
+    end
   end
 
   @doc "Count unread messages in a conversation for a user."

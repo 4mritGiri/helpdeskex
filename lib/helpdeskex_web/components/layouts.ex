@@ -160,7 +160,11 @@ defmodule HelpdeskexWeb.Layouts do
 
   def flash_group(assigns) do
     ~H"""
-    <div id={@id} aria-live="polite">
+    <div
+      id={@id}
+      aria-live="polite"
+      class="fixed top-6 right-0 -translate-x-1/2 z-[9999] flex flex-col items-center gap-3 w-fit"
+    >
       <.flash kind={:info} flash={@flash} />
       <.flash kind={:error} flash={@flash} />
 

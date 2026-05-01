@@ -660,6 +660,11 @@ defmodule HelpdeskexWeb.ChatLive do
         Chat.mark_as_read(conv_id, user.id)
         socket |> stream_insert(:messages, message)
       else
+        # Not looking at this conversation — mark as delivered if we're a participant
+        if Chat.participant?(conv_id, user.id) do
+          Chat.upsert_message_status(message.id, user.id, "delivered")
+        end
+
         unread = Map.get(socket.assigns.unread_counts, conv_id, 0)
         assign(socket, :unread_counts, Map.put(socket.assigns.unread_counts, conv_id, unread + 1))
       end
@@ -699,6 +704,13 @@ defmodule HelpdeskexWeb.ChatLive do
      socket
      |> assign(:conversations, conversations)
      |> assign(:unread_counts, Map.put(socket.assigns.unread_counts, conv.id, 0))}
+  end
+
+  @impl true
+  def handle_info({:message_status_updated, %{message_id: msg_id}}, socket) do
+    # Fetch updated message with preloaded statuses and update stream
+    message = Chat.get_message!(msg_id)
+    {:noreply, stream_insert(socket, :messages, message)}
   end
 
   @impl true

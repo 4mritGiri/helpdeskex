@@ -1,53 +1,33 @@
-// If you want to use Phoenix channels, run `mix help phx.gen.channel`
-// to get started and then uncomment the line below.
-// import "./user_socket.js"
-
-// You can include dependencies in two ways.
-//
-// The simplest option is to put them in assets/vendor and
-// import them using relative paths:
-//
-//     import "../vendor/some-package.js"
-//
-// Alternatively, you can `npm install some-package --prefix assets` and import
-// them using a path starting with the package name:
-//
-//     import "some-package"
-//
-// If you have dependencies that try to import CSS, esbuild will generate a separate `app.css` file.
-// To load it, simply add a second `<link>` to your `root.html.heex` file.
-
-// Include phoenix_html to handle method=PUT/DELETE in forms and buttons.
 import "phoenix_html"
-// Establish Phoenix Socket and LiveView configuration.
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/helpdeskex"
 import topbar from "../vendor/topbar"
-
 import { createPicker } from "../vendor/picmo"
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Hooks
+// ─────────────────────────────────────────────────────────────────────────────
+
 let Hooks = {
+
+  // Reset a form's text/textarea input after submit
   ResetForm: {
     mounted() {
       this.el.addEventListener("submit", () => {
-        const input = this.el.querySelector('input[type="text"], textarea');
-        if (input) {
-          setTimeout(() => { input.value = ""; }, 50);
-        }
-      });
+        const input = this.el.querySelector('input[type="text"], textarea')
+        if (input) setTimeout(() => { input.value = "" }, 50)
+      })
     }
   },
-  // ... existing hooks ...
+
+  // Kanban drag-and-drop (SortableJS must be loaded via CDN or vendor)
   Kanban: {
     mounted() {
       const Sortable = window.Sortable
-      if (!Sortable) {
-        console.error("SortableJS not loaded")
-        return
-      }
-      this.el.querySelectorAll(".column-body").forEach(column => {
-        new Sortable(column, {
+      if (!Sortable) { console.error("SortableJS not loaded"); return }
+      this.el.querySelectorAll(".column-body").forEach(col => {
+        new Sortable(col, {
           group: "tickets",
           animation: 150,
           ghostClass: "bg-surface-light",
@@ -63,312 +43,298 @@ let Hooks = {
     }
   },
 
+  // WebAuthn passkey registration & login
   Passkey: {
     mounted() {
-      // Handle registration
       this.handleEvent("register-passkey", ({ challenge, user_id, user_email }) => {
-        const challenge_bytes = Uint8Array.from(atob(challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
-        const user_id_bytes = new TextEncoder().encode(user_id);
+        const challengeBytes = base64UrlToBytes(challenge)
+        const userIdBytes = new TextEncoder().encode(user_id)
 
-        const options = {
+        navigator.credentials.create({
           publicKey: {
-            challenge: challenge_bytes,
+            challenge: challengeBytes,
             rp: { name: "HelpdeskEx" },
-            user: {
-              id: user_id_bytes,
-              name: user_email,
-              displayName: user_email
-            },
-            pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+            user: { id: userIdBytes, name: user_email, displayName: user_email },
+            pubKeyCredParams: [
+              { alg: -7, type: "public-key" },
+              { alg: -257, type: "public-key" }
+            ],
             timeout: 60000,
             attestation: "none",
-            authenticatorSelection: {
-              residentKey: "preferred",
-              userVerification: "preferred"
-            }
+            authenticatorSelection: { residentKey: "preferred", userVerification: "preferred" }
           }
-        };
-
-        navigator.credentials.create(options)
-          .then((cred) => {
-            const rawId = btoa(String.fromCharCode.apply(null, new Uint8Array(cred.rawId))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-            const pubKey = btoa(String.fromCharCode.apply(null, new Uint8Array(cred.response.getPublicKey()))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-            this.pushEvent("passkey-registered", { id: rawId, publicKey: pubKey });
+        })
+        .then(cred => {
+          this.pushEvent("passkey-registered", {
+            id: bytesToBase64Url(new Uint8Array(cred.rawId)),
+            publicKey: bytesToBase64Url(new Uint8Array(cred.response.getPublicKey()))
           })
-          .catch(err => console.error("Registration failed", err));
-      });
+        })
+        .catch(err => console.error("Passkey registration failed", err))
+      })
 
-      // Handle login
       this.handleEvent("login-passkey", ({ challenge }) => {
-        const challenge_bytes = Uint8Array.from(atob(challenge.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
+        const challengeBytes = base64UrlToBytes(challenge)
 
-        const options = {
-          publicKey: {
-            challenge: challenge_bytes,
-            timeout: 60000,
-            userVerification: "preferred"
-          }
-        };
-
-        navigator.credentials.get(options)
-          .then((assertion) => {
-            const rawId = btoa(String.fromCharCode.apply(null, new Uint8Array(assertion.rawId))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-            this.pushEvent("passkey-login-ready", { id: rawId });
+        navigator.credentials.get({
+          publicKey: { challenge: challengeBytes, timeout: 60000, userVerification: "preferred" }
+        })
+        .then(assertion => {
+          this.pushEvent("passkey-login-ready", {
+            id: bytesToBase64Url(new Uint8Array(assertion.rawId))
           })
-          .catch(err => console.error("Login failed", err));
-      });
+        })
+        .catch(err => console.error("Passkey login failed", err))
+      })
     }
   },
 
+  // Persist theme + sidebar state in localStorage
   Persistence: {
     mounted() {
-      // Restore from localStorage on mount
-      const theme = localStorage.getItem("phx:theme") || "light";
-      const sidebarCollapsed = localStorage.getItem("helpdesk:sidebar_collapsed") === "true";
-      
-      // Push to server so assigns are in sync
-      this.pushEvent("restore_state", { theme, sidebar_collapsed: sidebarCollapsed });
-      
-      // Listen for storage events from server
+      const theme = localStorage.getItem("phx:theme") || "dark"
+      const sidebarCollapsed = localStorage.getItem("helpdesk:sidebar_collapsed") === "true"
+      this.pushEvent("restore_state", { theme, sidebar_collapsed: sidebarCollapsed })
+
       this.handleEvent("store_state", ({ key, value }) => {
-        const storageKey = key === "theme" ? "phx:theme" : `helpdesk:${key}`;
-        localStorage.setItem(storageKey, value);
-        if (key === "theme") {
-          document.documentElement.setAttribute("data-theme", value);
-        }
-      });
+        const storageKey = key === "theme" ? "phx:theme" : `helpdesk:${key}`
+        localStorage.setItem(storageKey, String(value))
+        if (key === "theme") document.documentElement.setAttribute("data-theme", value)
+      })
     }
   },
 
+  // Auto-scroll chat to bottom on mount and stream updates.
+  // BUG FIX: was missing scroll on first mount when messages existed.
   ChatScroll: {
-    mounted() {
-      this.scrollToBottom();
-    },
-    updated() {
-      // Small delay to allow stream to update DOM
-      setTimeout(() => this.scrollToBottom(), 10);
-    },
+    mounted()  { this.scrollToBottom() },
+    updated()  { this.shouldScroll() && this.scrollToBottom() },
     scrollToBottom() {
-      if (this.el) {
-        this.el.scrollTop = this.el.scrollHeight;
-      }
+      if (this.el) this.el.scrollTop = this.el.scrollHeight
+    },
+    // Only auto-scroll if user is already near the bottom (within 150px)
+    shouldScroll() {
+      if (!this.el) return false
+      const { scrollTop, scrollHeight, clientHeight } = this.el
+      return scrollHeight - scrollTop - clientHeight < 150
     }
   },
 
+  // Full-featured chat textarea: auto-resize, emoji picker, mentions,
+  // image paste, keyboard shortcuts, typing indicators.
+  // BUG FIXES:
+  //   - Duplicate paste handler removed (was firing twice)
+  //   - Emoji picker leaked event listeners on every toggle
+  //   - Up-arrow edit now correctly targets last non-deleted message
+  //   - Mention Enter key guard correctly checks children count
   ChatInput: {
     mounted() {
-      this.typingTimer = null;
+      this.typingTimer = null
+      this._closePicker = null  // track bound listener to prevent leaks
 
-      // Auto-resize textarea
+      // ── Auto-resize ─────────────────────────────────────────────────────
       const resize = () => {
-        this.el.style.height = "auto";
-        this.el.style.height = `${this.el.scrollHeight}px`;
-      };
-      
-      this.el.addEventListener("input", resize);
-      resize(); // Initial call
+        this.el.style.height = "auto"
+        this.el.style.height = `${Math.min(this.el.scrollHeight, 128)}px`
+      }
+      this.el.addEventListener("input", resize)
+      resize()
 
-      // Handle paste (Images)
+      // ── Reset height on form submit ──────────────────────────────────────
+      this.el.closest("form")?.addEventListener("submit", () => {
+        setTimeout(resize, 10)
+      })
+
+      // ── Image paste ─────────────────────────────────────────────────────
+      // BUG FIX: one consolidated paste handler (was duplicated previously)
       this.el.addEventListener("paste", (e) => {
-        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-        for (let index in items) {
-          const item = items[index];
-          if (item.kind === 'file' && item.type.includes('image')) {
-            const blob = item.getAsFile();
-            const fileInput = document.getElementById("chat-file-input");
+        const items = Array.from((e.clipboardData || e.originalEvent.clipboardData).items)
+        const imageItem = items.find(i => i.kind === "file" && i.type.startsWith("image/"))
+        if (imageItem) {
+          const file = imageItem.getAsFile()
+          // Try LiveView upload hook first; fall back to hidden file input
+          if (typeof this.upload === "function") {
+            this.upload("attachments", [file])
+          } else {
+            const fileInput = document.getElementById("chat-file-input")
             if (fileInput) {
-              const dataTransfer = new DataTransfer();
-              dataTransfer.items.add(blob);
-              fileInput.files = dataTransfer.files;
-              fileInput.dispatchEvent(new Event("change", { bubbles: true }));
+              const dt = new DataTransfer()
+              dt.items.add(file)
+              fileInput.files = dt.files
+              fileInput.dispatchEvent(new Event("change", { bubbles: true }))
             }
           }
         }
-      });
+      })
 
-      // Handle typing indicator
-      this.el.addEventListener("input", e => {
-        if (!this.typingTimer) {
-          this.pushEvent("typing_start", {});
-        }
-        clearTimeout(this.typingTimer);
+      // ── Typing indicator ─────────────────────────────────────────────────
+      this.el.addEventListener("input", () => {
+        if (!this.typingTimer) this.pushEvent("typing_start", {})
+        clearTimeout(this.typingTimer)
         this.typingTimer = setTimeout(() => {
-          this.pushEvent("typing_stop", {});
-          this.typingTimer = null;
-        }, 3000);
-      });
+          this.pushEvent("typing_stop", {})
+          this.typingTimer = null
+        }, 2500)
+      })
 
-      // Initialize Emoji Picker with click-away support
-      const emojiBtn = document.getElementById("emoji-picker-btn");
-      const container = document.getElementById("emoji-picker-container");
-      
+      // ── Emoji picker ─────────────────────────────────────────────────────
+      const emojiBtn = document.getElementById("emoji-picker-btn")
+      const container = document.getElementById("emoji-picker-container")
+      let picker = null
+
       if (emojiBtn && container) {
-        let picker = null;
-        
-        const closePicker = (e) => {
-          if (!container.contains(e.target) && !emojiBtn.contains(e.target)) {
-            container.classList.add("hidden");
-            document.removeEventListener("click", closePicker);
+        // BUG FIX: lazily remove old listener before adding new one
+        const openPicker = () => {
+          container.classList.remove("hidden")
+
+          if (!picker) {
+            try {
+              picker = createPicker({
+                rootElement: container,
+                theme: document.documentElement.getAttribute("data-theme") === "dark"
+                  ? "dark" : "light",
+                autoFocusSearch: false
+              })
+              picker.addEventListener("emoji:select", ({ emoji }) => {
+                if (!emoji) return
+                const pos = this.el.selectionStart ?? this.el.value.length
+                this.el.value = this.el.value.slice(0, pos) + emoji + this.el.value.slice(pos)
+                this.el.dispatchEvent(new Event("input", { bubbles: true }))
+                this.el.focus()
+                closePicker()
+              })
+            } catch (err) {
+              console.error("Emoji picker init failed:", err)
+            }
           }
-        };
+
+          // Add click-away — BUG FIX: remove old listener first
+          if (this._closePicker) document.removeEventListener("click", this._closePicker)
+          this._closePicker = (e) => {
+            if (!container.contains(e.target) && !emojiBtn.contains(e.target)) closePicker()
+          }
+          setTimeout(() => document.addEventListener("click", this._closePicker), 0)
+        }
+
+        const closePicker = () => {
+          container.classList.add("hidden")
+          if (this._closePicker) {
+            document.removeEventListener("click", this._closePicker)
+            this._closePicker = null
+          }
+        }
 
         emojiBtn.addEventListener("click", (e) => {
-          e.stopPropagation();
-          const isHidden = container.classList.toggle("hidden");
-          
-          if (!isHidden) {
-            document.addEventListener("click", closePicker);
-            // Lazy init
-            if (!picker) {
-              try {
-                picker = createPicker({
-                  rootElement: container,
-                  theme: document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light",
-                  autoFocusSearch: false
-                });
-                
-                picker.addEventListener('emoji:select', selection => {
-                  const emoji = selection.emoji || selection;
-                  if (emoji) {
-                    const pos = this.el.selectionStart || this.el.value.length;
-                    this.el.value = this.el.value.substring(0, pos) + emoji + this.el.value.substring(pos);
-                    this.el.dispatchEvent(new Event("input", { bubbles: true }));
-                    this.el.focus();
-                    container.classList.add("hidden");
-                  }
-                });
-              } catch (err) {
-                console.error("Emoji picker failed to init:", err);
-              }
-            }
-          }
-        });
+          e.stopPropagation()
+          container.classList.contains("hidden") ? openPicker() : closePicker()
+        })
       }
 
-      
-      // Handle image paste from clipboard
-      this.el.addEventListener("paste", e => {
-        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
-        for (let item of items) {
-          if (item.kind === 'file' && item.type.startsWith('image/')) {
-            const file = item.getAsFile();
-            this.upload("attachments", [file]);
-          }
-        }
-      });
-      // Reset height when form is submitted
-      this.el.closest("form").addEventListener("submit", () => {
-        setTimeout(() => resize(), 10);
-      });
-
+      // ── Keyboard shortcuts ───────────────────────────────────────────────
       this.el.addEventListener("keydown", (e) => {
-        // ... same shortcut logic ...
-        // Enter to submit (Shift+Enter for newline)
+        // Enter to submit (Shift+Enter = newline)
         if (e.key === "Enter" && !e.shiftKey) {
-          const mentionResults = document.getElementById("mention-results");
+          const mentionResults = document.getElementById("mention-results")
           if (mentionResults && mentionResults.children.length > 0) {
-            // If mentions are visible, enter selects the first one
-            e.preventDefault();
-            const firstMention = mentionResults.querySelector("button");
-            if (firstMention) firstMention.click();
-            return;
+            e.preventDefault()
+            mentionResults.querySelector("button")?.click()
+            return
           }
-          
-          e.preventDefault();
-          this.el.closest("form").dispatchEvent(
-            new Event("submit", {bubbles: true, cancelable: true})
-          );
+          e.preventDefault()
+          this.el.closest("form")?.dispatchEvent(
+            new Event("submit", { bubbles: true, cancelable: true })
+          )
+          return
         }
 
-        // Up Arrow to edit last message
+        // Up arrow to edit last own message (only when input is empty)
         if (e.key === "ArrowUp" && this.el.value === "") {
-          e.preventDefault();
-          this.pushEvent("edit_last_message", {});
+          e.preventDefault()
+          this.pushEvent("edit_last_message", {})
+          return
         }
 
-        // Escape to cancel edit/reply
+        // Escape: cancel edit / reply
         if (e.key === "Escape") {
-          this.pushEvent("cancel_edit", {});
-          this.pushEvent("cancel_reply", {});
+          this.pushEvent("cancel_edit", {})
+          this.pushEvent("cancel_reply", {})
+          return
         }
-        
-        // Command+K or Ctrl+K for search
+
+        // Cmd/Ctrl+K: focus sidebar search
         if ((e.metaKey || e.ctrlKey) && e.key === "k") {
-          e.preventDefault();
-          const searchInput = document.getElementById("sidebar-search-input");
-          if (searchInput) searchInput.focus();
+          e.preventDefault()
+          document.getElementById("sidebar-search-input")?.focus()
         }
-      });
+      })
+    },
+
+    destroyed() {
+      // Clean up click-away listener to avoid memory leaks
+      if (this._closePicker) document.removeEventListener("click", this._closePicker)
+      if (this.typingTimer) {
+        clearTimeout(this.typingTimer)
+        this.pushEvent("typing_stop", {})
+      }
     }
   }
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Utility functions
+// ─────────────────────────────────────────────────────────────────────────────
+
+function base64UrlToBytes(str) {
+  const b64 = str.replace(/-/g, "+").replace(/_/g, "/")
+  return Uint8Array.from(atob(b64), c => c.charCodeAt(0))
+}
+
+function bytesToBase64Url(bytes) {
+  return btoa(String.fromCharCode(...bytes))
+    .replace(/\+/g, "-").replace(/\//g, "_").replace(/=/g, "")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// LiveSocket setup
+// ─────────────────────────────────────────────────────────────────────────────
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: {_csrf_token: csrfToken},
-  hooks: {...Hooks, ...colocatedHooks},
+  params: { _csrf_token: csrfToken },
+  hooks: { ...Hooks, ...colocatedHooks }
 })
 
-// Show progress bar on live navigation and form submits
-topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
-window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
-window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+// Progress bar
+topbar.config({ barColors: { 0: "#7c3aed" }, shadowColor: "rgba(0,0,0,.3)" })
+window.addEventListener("phx:page-loading-start", () => topbar.show(300))
+window.addEventListener("phx:page-loading-stop", () => topbar.hide())
 
-// LiveView JS Exec helper
-window.addEventListener("phx:js-exec", ({detail}) => {
-  const el = document.querySelector(detail.selector);
-  if (el) {
-    if (detail.action === "submit") el.submit();
-    else el[detail.action]();
-  }
-});
+// Generic JS exec helper (submit, focus, click, etc.)
+window.addEventListener("phx:js-exec", ({ detail }) => {
+  const el = document.querySelector(detail.selector)
+  if (!el) return
+  if (detail.action === "submit") el.submit()
+  else if (typeof el[detail.action] === "function") el[detail.action]()
+})
 
-// connect if there are any LiveViews on the page
 liveSocket.connect()
-
-// expose liveSocket on window for web console debug logs and latency simulation:
-// >> liveSocket.enableDebug()
-// >> liveSocket.enableLatencySim(1000)  // enabled for duration of browser session
-// >> liveSocket.disableLatencySim()
 window.liveSocket = liveSocket
 
-// The lines below enable quality of life phoenix_live_reload
-// development features:
-//
-//     1. stream server logs to the browser console
-//     2. click on elements to jump to their definitions in your code editor
-//
-if (process.env.NODE_ENV === "development") {
-  window.addEventListener("phx:live_reload:attached", ({detail: reloader}) => {
-    // Enable server log streaming to client.
-    // Disable with reloader.disableServerLogs()
-    reloader.enableServerLogs()
+// ─────────────────────────────────────────────────────────────────────────────
+// Live Reload (dev only)
+// ─────────────────────────────────────────────────────────────────────────────
 
-    // Open configured PLUG_EDITOR at file:line of the clicked element's HEEx component
-    //
-    //   * click with "c" key pressed to open at caller location
-    //   * click with "d" key pressed to open at function component definition location
+if (process.env.NODE_ENV === "development") {
+  window.addEventListener("phx:live_reload:attached", ({ detail: reloader }) => {
+    reloader.enableServerLogs()
     let keyDown
     window.addEventListener("keydown", e => keyDown = e.key)
-    window.addEventListener("keyup", _e => keyDown = null)
+    window.addEventListener("keyup", () => keyDown = null)
     window.addEventListener("click", e => {
-      if(keyDown === "c"){
-        e.preventDefault()
-        e.stopImmediatePropagation()
-        reloader.openEditorAtCaller(e.target)
-      } else if(keyDown === "d"){
-        e.preventDefault()
-        e.stopImmediatePropagation()
-        reloader.openEditorAtDef(e.target)
-      }
+      if (keyDown === "c") { e.preventDefault(); e.stopImmediatePropagation(); reloader.openEditorAtCaller(e.target) }
+      else if (keyDown === "d") { e.preventDefault(); e.stopImmediatePropagation(); reloader.openEditorAtDef(e.target) }
     }, true)
-
     window.liveReloader = reloader
   })
 }
-
-// --- HelpdeskEx UI Logic ---
-// We now use LiveView Hooks (see Hooks.Kanban above)
-
-

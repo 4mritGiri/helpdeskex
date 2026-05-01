@@ -56,25 +56,48 @@ defmodule HelpdeskexWeb.CoreComponents do
       id={@id}
       phx-click={JS.push("lv:clear-flash", value: %{key: @kind}) |> hide("##{@id}")}
       role="alert"
-      class="toast toast-top toast-end z-50"
+      class={[
+        "relative flex flex-row items-center gap-4 min-w-[340px] max-w-md w-fit overflow-hidden",
+        "p-4 pr-10 rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] backdrop-blur-xl border border-white/5",
+        "transition-all duration-300 ease-out",
+        "bg-[#111827]/95"
+      ]}
       {@rest}
     >
       <div class={[
-        "alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap",
-        @kind == :info && "alert-info",
-        @kind == :error && "alert-error"
+        "absolute left-0 top-0 bottom-0 w-1",
+        @kind == :info && "bg-blue-500",
+        @kind == :error && "bg-red-500"
+      ]} />
+
+      <div class={[
+        "flex items-center justify-center size-10 rounded-xl shrink-0",
+        @kind == :info && "bg-blue-500/10 text-blue-400",
+        @kind == :error && "bg-red-500/10 text-red-400"
       ]}>
-        <.icon :if={@kind == :info} name="hero-information-circle" class="size-5 shrink-0" />
-        <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-5 shrink-0" />
-        <div>
-          <p :if={@title} class="font-semibold">{@title}</p>
-          <p>{msg}</p>
-        </div>
-        <div class="flex-1" />
-        <button type="button" class="group self-start cursor-pointer" aria-label={gettext("close")}>
-          <.icon name="hero-x-mark" class="size-5 opacity-40 group-hover:opacity-70" />
-        </button>
+        <.icon :if={@kind == :info} name="hero-information-circle" class="size-6" />
+        <.icon :if={@kind == :error} name="hero-exclamation-circle" class="size-6" />
       </div>
+
+      <div class="flex flex-col gap-0.5">
+        <p :if={@title} class="text-[15px] font-bold text-white tracking-tight leading-tight">
+          {@title}
+        </p>
+        <p class="text-xs text-white/60 leading-relaxed font-medium">
+          {msg}
+        </p>
+      </div>
+
+      <button
+        type="button"
+        class="absolute top-2 right-2 p-1.5 hover:bg-white/5 rounded-lg transition-colors group shrink-0"
+        aria-label={gettext("close")}
+      >
+        <.icon
+          name="hero-x-mark"
+          class="size-4 text-white/20 group-hover:text-white/60 transition-colors"
+        />
+      </button>
     </div>
     """
   end
