@@ -124,14 +124,14 @@ let Hooks = {
     mounted() {
       // Restore from localStorage on mount
       const theme = localStorage.getItem("phx:theme") || "light";
-      const sidebarCollapsed = localStorage.getItem("deskflow:sidebar_collapsed") === "true";
+      const sidebarCollapsed = localStorage.getItem("helpdesk:sidebar_collapsed") === "true";
       
       // Push to server so assigns are in sync
       this.pushEvent("restore_state", { theme, sidebar_collapsed: sidebarCollapsed });
       
       // Listen for storage events from server
       this.handleEvent("store_state", ({ key, value }) => {
-        const storageKey = key === "theme" ? "phx:theme" : `deskflow:${key}`;
+        const storageKey = key === "theme" ? "phx:theme" : `helpdesk:${key}`;
         localStorage.setItem(storageKey, value);
         if (key === "theme") {
           document.documentElement.setAttribute("data-theme", value);
@@ -368,7 +368,7 @@ if (process.env.NODE_ENV === "development") {
   })
 }
 
-// --- Custom HelpdeskEx UI Logic ---
+// --- HelpdeskEx UI Logic ---
 // We now use LiveView Hooks (see Hooks.Kanban above)
 
 

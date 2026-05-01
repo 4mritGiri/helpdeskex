@@ -21,7 +21,7 @@
 /* Make LiveView wrapper divs transparent for layout */
 [data-phx-session], [data-phx-teleported-src] { display: contents }
 
-/* --- DeskFlow Design System --- */
+/* --- HelpdeskEx Design System --- */
 @layer base {
   :root {
     --bg-primary:#ffffff;
@@ -90,7 +90,7 @@
     transition: width 0.22s cubic-bezier(.4, 0, .2, 1);
     overflow: hidden;
   }
-  .sidebar.collapsed { width: 52px; }
+  [data-sidebar="collapsed"] .sidebar { width: 52px; }
   .sidebar-logo {
     padding: 14px 14px 12px;
     border-bottom: 0.5px solid var(--border-color);
@@ -130,7 +130,7 @@
   }
   .toggle-btn:hover { background: var(--bg-tertiary); }
   .toggle-btn svg { width: 12px; height: 12px; stroke: var(--text-secondary); fill: none; stroke-width: 2; stroke-linecap: round; transition: transform 0.22s; }
-  .sidebar.collapsed .toggle-btn svg { transform: rotate(180deg); }
+  [data-sidebar="collapsed"] .sidebar .toggle-btn svg { transform: rotate(180deg); }
   
   .nav { padding: 10px 8px; flex: 1; overflow-y: auto; overflow-x: hidden; }
   .nav-section {
@@ -145,7 +145,7 @@
     overflow: hidden;
     transition: opacity 0.15s;
   }
-  .sidebar.collapsed .nav-section { opacity: 0; }
+  [data-sidebar="collapsed"] .sidebar .nav-section { opacity: 0; }
   .nav-item {
     display: flex;
     align-items: center;
@@ -164,7 +164,7 @@
   .nav-item.active { background: var(--purple-bg); color: var(--purple-text); font-weight: 500; }
   .nav-icon { width: 16px; height: 16px; flex-shrink: 0; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
   .nav-label { overflow: hidden; transition: opacity 0.15s, max-width 0.22s; max-width: 160px; }
-  .sidebar.collapsed .nav-label { opacity: 0; max-width: 0; }
+  [data-sidebar="collapsed"] .sidebar .nav-label { opacity: 0; max-width: 0; }
   .nav-badge {
     margin-left: auto;
     background: var(--bg-secondary);
@@ -176,7 +176,7 @@
     flex-shrink: 0;
     transition: opacity 0.15s;
   }
-  .sidebar.collapsed .nav-badge { opacity: 0; pointer-events: none; }
+  [data-sidebar="collapsed"] .sidebar .nav-badge { opacity: 0; pointer-events: none; }
   .nav-badge.urgent { background: #FCEBEB; color: #A32D2D; border-color: #F09595; }
   [data-theme="dark"] .nav-badge.urgent { background: #3d1a1a; color: #f09595; border-color: #6b2a2a; }
   
@@ -195,11 +195,11 @@
     flex-shrink: 0;
   }
   .agent-info { overflow: hidden; transition: opacity 0.15s, max-width 0.22s; max-width: 160px; }
-  .sidebar.collapsed .agent-info { opacity: 0; max-width: 0; }
+  [data-sidebar="collapsed"] .sidebar .agent-info { opacity: 0; max-width: 0; }
   .agent-name { font-size: 12px; font-weight: 500; color: var(--text-primary); white-space: nowrap; }
   .agent-role { font-size: 10px; color: var(--text-tertiary); white-space: nowrap; }
   .status-dot { width: 7px; height: 7px; border-radius: 50%; background: #1D9E75; margin-left: auto; flex-shrink: 0; transition: opacity 0.15s; }
-  .sidebar.collapsed .status-dot { opacity: 0; }
+  [data-sidebar="collapsed"] .sidebar .status-dot { opacity: 0; }
 
   /* MAIN */
   .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
