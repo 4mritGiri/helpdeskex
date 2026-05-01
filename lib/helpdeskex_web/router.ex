@@ -29,6 +29,7 @@ defmodule HelpdeskexWeb.Router do
     pipe_through [:browser, :auth]
 
     live "/login", LoginLive
+    live "/register", RegisterLive
     live "/users/reset_password", ForgotPasswordLive
     live "/users/reset_password/:token", ResetPasswordLive
     post "/session", SessionController, :create

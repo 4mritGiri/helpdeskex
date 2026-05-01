@@ -39,6 +39,58 @@ defmodule HelpdeskexWeb.ChatLive do
           end
       end
 
+    # Fetch initial presence
+    presences = Helpdeskex.Chat.Presence.list("chat_presence:tenant_#{user.tenant_id}")
+    online_users = Enum.reduce(Map.keys(presences), %{}, fn id, acc -> Map.put(acc, id, true) end)
+
+    # Compute unread counts for all conversations
+    unread_counts =
+      conversations
+      |> Enum.map(fn c -> {c.id, Chat.get_unread_count(c.id, user.id)} end)
+      |> Map.new()
+
+    socket =
+      socket
+      |> assign(:page_title, "Team Chat · HelpdeskEx")
+      |> assign(:current_user, user)
+      |> assign(:chat_token, chat_token)
+      |> assign(:conversations, conversations)
+      |> assign(:active_conversation, active_conv)
+      |> assign(:tenant_users, tenant_users)
+      |> assign(:unread_counts, unread_counts)
+      |> assign(:show_new_chat_modal, false)
+      |> assign(:show_group_modal, false)
+      |> assign(:search_query, "")
+      |> assign(:group_name, "")
+      |> assign(:selected_members, [])
+      |> assign(:typing_users, [])
+      |> assign(:online_users, online_users)
+      |> assign(:message_input, "")
+      |> assign(:reply_to, nil)
+      |> assign(:editing_message, nil)
+      |> assign(:has_more_messages, length(messages) >= 50)
+      |> assign(:current_scope, nil)
+      |> assign(:theme, "light")
+      |> assign(:sidebar_collapsed, false)
+      |> assign(:show_right_sidebar, false)
+      |> assign(:show_forward_modal, false)
+      |> assign(:active_reaction_picker, nil)
+      |> assign(:forwarding_message_id, nil)
+      |> assign(:active_tab, "todos")
+      |> assign(:mention_query, nil)
+      |> assign(:mention_results, [])
+      |> assign(:mention_index, 0)
+      |> assign(:stats, %{open: 0, in_progress: 0, resolved: 0})
+      |> allow_upload(:attachments,
+        accept: ~w(.jpg .jpeg .png .pdf .zip .csv .doc .docx),
+        max_entries: 5
+      )
+      |> stream(:messages, messages)
+      |> stream(:todos, [])
+      |> stream(:notes, [])
+
+    socket = if active_conv, do: load_productivity_data(socket), else: socket
+
     if connected?(socket) do
       Chat.subscribe_user(user.id)
 
@@ -63,55 +115,7 @@ defmodule HelpdeskexWeb.ChatLive do
       end
     end
 
-    # Fetch initial presence
-    presences = Helpdeskex.Chat.Presence.list("chat_presence:tenant_#{user.tenant_id}")
-    online_users = Enum.reduce(Map.keys(presences), %{}, fn id, acc -> Map.put(acc, id, true) end)
-
-    # Compute unread counts for all conversations
-    unread_counts =
-      conversations
-      |> Enum.map(fn c -> {c.id, Chat.get_unread_count(c.id, user.id)} end)
-      |> Map.new()
-
-    {:ok,
-     socket
-     |> assign(:page_title, "Team Chat · HelpdeskEx")
-     |> assign(:current_user, user)
-     |> assign(:chat_token, chat_token)
-     |> assign(:conversations, conversations)
-     |> assign(:active_conversation, active_conv)
-     |> assign(:tenant_users, tenant_users)
-     |> assign(:unread_counts, unread_counts)
-     |> assign(:show_new_chat_modal, false)
-     |> assign(:show_group_modal, false)
-     |> assign(:search_query, "")
-     |> assign(:group_name, "")
-     |> assign(:selected_members, [])
-     |> assign(:typing_users, [])
-     |> assign(:online_users, online_users)
-     |> assign(:message_input, "")
-     |> assign(:reply_to, nil)
-     |> assign(:editing_message, nil)
-     |> assign(:has_more_messages, length(messages) >= 50)
-     |> assign(:current_scope, nil)
-     |> assign(:theme, "light")
-     |> assign(:sidebar_collapsed, false)
-     |> assign(:show_right_sidebar, false)
-     |> assign(:show_forward_modal, false)
-     |> assign(:active_reaction_picker, nil)
-     |> assign(:forwarding_message_id, nil)
-     |> assign(:active_tab, "todos")
-     |> assign(:mention_query, nil)
-     |> assign(:mention_results, [])
-     |> assign(:mention_index, 0)
-     |> assign(:stats, %{open: 0, in_progress: 0, resolved: 0})
-     |> allow_upload(:attachments,
-       accept: ~w(.jpg .jpeg .png .pdf .zip .csv .doc .docx),
-       max_entries: 5
-     )
-     |> stream(:messages, messages)
-     |> stream(:todos, [])
-     |> stream(:notes, [])}
+    {:ok, socket}
   end
 
   @impl true
@@ -136,7 +140,8 @@ defmodule HelpdeskexWeb.ChatLive do
        |> assign(:reply_to, nil)
        |> assign(:editing_message, nil)
        |> assign(:has_more_messages, length(messages) >= 50)
-       |> stream(:messages, messages, reset: true)}
+       |> stream(:messages, messages, reset: true)
+       |> load_productivity_data()}
     else
       {:noreply,
        socket |> put_flash(:error, "Conversation not found.") |> push_patch(to: "/chat")}
@@ -578,6 +583,27 @@ defmodule HelpdeskexWeb.ChatLive do
   end
 
   @impl true
+  def handle_event("update_nickname", %{"nickname" => nickname}, socket) do
+    user = socket.assigns.current_user
+    conv = socket.assigns.active_conversation
+
+    case Chat.update_nickname(conv.id, user.id, nickname) do
+      {:ok, _} -> {:noreply, socket}
+      {:error, _} -> {:noreply, put_flash(socket, :error, "Could not update nickname")}
+    end
+  end
+
+  @impl true
+  def handle_event("update_group_avatar", %{"avatar_url" => url}, socket) do
+    conv = socket.assigns.active_conversation
+
+    case Chat.update_conversation_avatar(conv.id, url) do
+      {:ok, _} -> {:noreply, socket}
+      {:error, _} -> {:noreply, put_flash(socket, :error, "Could not update group avatar")}
+    end
+  end
+
+  @impl true
   def handle_event("toggle_reaction_picker", %{"message_id" => msg_id}, socket) do
     current = socket.assigns.active_reaction_picker
 
@@ -714,11 +740,55 @@ defmodule HelpdeskexWeb.ChatLive do
   end
 
   @impl true
+  def handle_info({:participant_updated, _participant}, socket) do
+    conv = Chat.get_conversation!(socket.assigns.active_conversation.id)
+    {:noreply, assign(socket, :active_conversation, conv)}
+  end
+
+  @impl true
+  def handle_info({:conversation_updated, _conversation}, socket) do
+    user = socket.assigns.current_user
+    conv = Chat.get_conversation!(socket.assigns.active_conversation.id)
+    conversations = Chat.list_conversations(user.id)
+
+    {:noreply,
+     socket
+     |> assign(:active_conversation, conv)
+     |> assign(:conversations, conversations)}
+  end
+
+  @impl true
   def handle_info(_msg, socket) do
     {:noreply, socket}
   end
 
   # ── Helpers ───────────────────────────────────────────────────────────────
+
+  defp load_productivity_data(socket) do
+    conv = socket.assigns.active_conversation
+
+    if conv do
+      todos = Chat.list_todos(conv.id)
+      notes = Chat.list_notes(conv.id)
+
+      socket
+      |> stream(:todos, todos, reset: true)
+      |> stream(:notes, notes, reset: true)
+    else
+      socket
+    end
+  end
+
+  def display_name(participant) do
+    participant.nickname || (participant.user && participant.user.full_name) || "Unknown User"
+  end
+
+  def display_name_for_sender(nil, sender), do: sender.full_name
+
+  def display_name_for_sender(%{participants: participants}, sender) do
+    participant = Enum.find(participants, &(&1.user_id == sender.id))
+    if participant, do: display_name(participant), else: sender.full_name
+  end
 
   def conversation_name(%{type: "direct"} = conv, current_user) do
     other =
@@ -727,7 +797,7 @@ defmodule HelpdeskexWeb.ChatLive do
 
     case other do
       nil -> "Direct Message"
-      %{user: user} -> user.full_name || user.email
+      p -> display_name(p)
     end
   end
 
@@ -852,21 +922,6 @@ defmodule HelpdeskexWeb.ChatLive do
         socket
         |> assign(:mention_query, nil)
         |> assign(:mention_results, [])
-    end
-  end
-
-  defp load_productivity_data(socket) do
-    conv = socket.assigns.active_conversation
-
-    if conv do
-      todos = Chat.list_todos(conv.id)
-      notes = Chat.list_notes(conv.id)
-
-      socket
-      |> stream(:todos, todos, reset: true)
-      |> stream(:notes, notes, reset: true)
-    else
-      socket
     end
   end
 end

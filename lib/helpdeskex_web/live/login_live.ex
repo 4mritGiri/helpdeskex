@@ -164,6 +164,16 @@ defmodule HelpdeskexWeb.LoginLive do
           <% end %>
         </div>
 
+        <p class="text-center text-[12px] text-slate-500 dark:text-zinc-500 mt-6">
+          Don't have an account?
+          <.link
+            navigate="/register"
+            class="text-indigo-600 dark:text-indigo-400 font-bold hover:underline"
+          >
+            Register here
+          </.link>
+        </p>
+
         <p class="text-center text-[10px] text-slate-400 dark:text-zinc-600 font-medium mt-4 tracking-wide">
           &copy; 2026 HelpdeskEx &mdash; All rights reserved
         </p>

@@ -6,6 +6,7 @@ defmodule Helpdeskex.Chat.Participant do
   @foreign_key_type :binary_id
 
   schema "chat_participants" do
+    field :nickname, :string
     field :role, :string, default: "member"
     field :last_read_at, :utc_datetime
 
@@ -17,7 +18,7 @@ defmodule Helpdeskex.Chat.Participant do
 
   def changeset(participant, attrs) do
     participant
-    |> cast(attrs, [:role, :last_read_at, :conversation_id, :user_id])
+    |> cast(attrs, [:role, :last_read_at, :conversation_id, :user_id, :nickname])
     |> validate_required([:conversation_id, :user_id])
     |> validate_inclusion(:role, ["member", "admin"])
     |> unique_constraint([:conversation_id, :user_id])

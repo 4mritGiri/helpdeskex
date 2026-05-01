@@ -70,7 +70,7 @@ defmodule HelpdeskexWeb.Layouts do
       <div class="sidebar-logo">
         <div class="brand-dot"><svg viewBox="0 0 13 13"><path d="M2 6.5h9M6.5 2v9" /></svg></div>
         <div class="brand-text">
-          <div class="name">DeskFlow</div>
+          <div class="name">HelpDeskEx</div>
           <div class="org">National Bank</div>
         </div>
         <div class="toggle-btn" phx-click="toggle_sidebar">

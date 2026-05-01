@@ -583,6 +583,52 @@ defmodule Helpdeskex.Chat do
     {:ok, message}
   end
 
+  @doc "Update a participant's nickname."
+  def update_nickname(conversation_id, user_id, nickname) do
+    Participant
+    |> Repo.get_by(conversation_id: conversation_id, user_id: user_id)
+    |> case do
+      nil ->
+        {:error, :not_found}
+
+      participant ->
+        participant
+        |> Participant.changeset(%{nickname: nickname})
+        |> Repo.update()
+        |> case do
+          {:ok, updated} ->
+            broadcast_conversation(conversation_id, {:participant_updated, updated})
+            {:ok, updated}
+
+          error ->
+            error
+        end
+    end
+  end
+
+  @doc "Update a conversation's avatar."
+  def update_conversation_avatar(conversation_id, avatar_url) do
+    Conversation
+    |> Repo.get(conversation_id)
+    |> case do
+      nil ->
+        {:error, :not_found}
+
+      conversation ->
+        conversation
+        |> Conversation.changeset(%{avatar_url: avatar_url})
+        |> Repo.update()
+        |> case do
+          {:ok, updated} ->
+            broadcast_conversation(conversation_id, {:conversation_updated, updated})
+            {:ok, updated}
+
+          error ->
+            error
+        end
+    end
+  end
+
   @doc "Changeset for a new message (used in forms)."
   def change_message(%Message{} = message, attrs \\ %{}) do
     Message.changeset(message, attrs)
