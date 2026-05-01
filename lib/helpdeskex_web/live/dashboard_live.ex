@@ -31,6 +31,8 @@ defmodule HelpdeskexWeb.DashboardLive do
     priorities = if tenant_id, do: Tickets.list_ticket_priorities(tenant_id), else: []
     stats = compute_stats(tickets)
 
+    passkeys = Accounts.list_user_passkeys(user_id)
+
     {:ok,
      socket
      |> assign(:page_title, "Dashboard · HelpdeskEx")
@@ -38,6 +40,7 @@ defmodule HelpdeskexWeb.DashboardLive do
      |> assign(:statuses, statuses)
      |> assign(:priorities, priorities)
      |> assign(:stats, stats)
+     |> assign(:passkeys, passkeys)
      |> assign(:selected_ticket, nil)
      # Added current_view
      |> assign(:current_view, "kanban")
@@ -266,15 +269,36 @@ defmodule HelpdeskexWeb.DashboardLive do
 
     case Helpdeskex.Accounts.PasskeyAuth.register_passkey(user, id, pub_key) do
       {:ok, _passkey} ->
+        passkeys = Accounts.list_user_passkeys(user.id)
+
         {:noreply,
-         put_flash(
-           socket,
+         socket
+         |> assign(:passkeys, passkeys)
+         |> put_flash(
            :info,
            "Passkey registered successfully! You can now log in with your phone."
          )}
 
       {:error, _} ->
         {:noreply, put_flash(socket, :error, "Failed to register passkey.")}
+    end
+  end
+
+  @impl true
+  def handle_event("delete-passkey", %{"id" => passkey_id}, socket) do
+    user = socket.assigns.current_user
+
+    case Accounts.delete_user_passkey(user.id, passkey_id) do
+      {:ok, _} ->
+        passkeys = Accounts.list_user_passkeys(user.id)
+
+        {:noreply,
+         socket
+         |> assign(:passkeys, passkeys)
+         |> put_flash(:info, "Passkey removed.")}
+
+      {:error, _} ->
+        {:noreply, put_flash(socket, :error, "Could not remove passkey.")}
     end
   end
 

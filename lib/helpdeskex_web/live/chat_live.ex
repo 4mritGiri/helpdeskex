@@ -701,6 +701,11 @@ defmodule HelpdeskexWeb.ChatLive do
      |> assign(:unread_counts, Map.put(socket.assigns.unread_counts, conv.id, 0))}
   end
 
+  @impl true
+  def handle_info(_msg, socket) do
+    {:noreply, socket}
+  end
+
   # ── Helpers ───────────────────────────────────────────────────────────────
 
   def conversation_name(%{type: "direct"} = conv, current_user) do

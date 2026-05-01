@@ -24,14 +24,14 @@ defmodule HelpdeskexWeb.Auth.LiveHooks do
                 socket.assigns.active_conversation.id
 
             if active_id != msg.conversation_id do
-              {:cont,
+              {:halt,
                put_flash(
                  socket,
                  :info,
                  "Chat: #{msg.sender.full_name}: #{String.slice(msg.body || "Sent an attachment", 0, 30)}"
                )}
             else
-              {:cont, socket}
+              {:halt, socket}
             end
 
           _, socket ->

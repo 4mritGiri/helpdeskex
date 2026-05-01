@@ -156,4 +156,19 @@ defmodule Helpdeskex.Accounts do
     |> AuditLog.changeset(attrs)
     |> Repo.insert()
   end
+
+  # --- Passkeys ---
+
+  def list_user_passkeys(user_id) do
+    Repo.all(from p in Helpdeskex.Accounts.UserPasskey, where: p.user_id == ^user_id)
+  end
+
+  def delete_user_passkey(user_id, passkey_id) do
+    Helpdeskex.Accounts.UserPasskey
+    |> Repo.get_by(id: passkey_id, user_id: user_id)
+    |> case do
+      nil -> {:error, :not_found}
+      passkey -> Repo.delete(passkey)
+    end
+  end
 end
